@@ -1,0 +1,31 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "ble/ble_manager.c" 
+        "device/device_info.c"
+        "gpio/gpio_control.c"
+        "http/http_server.c"
+        "ota/ota_manager.c"
+        "storage/nvs_manager.c"
+        "wifi/wifi_manager.c"
+    INCLUDE_DIRS
+        "."
+        "ble"
+        "device"
+        "common"
+        "gpio"
+        "http" 
+        "ota"
+        "storage"
+        "wifi"
+    REQUIRES 
+        esp_wifi 
+        nvs_flash
+        esp_http_server 
+        esp_driver_gpio
+        app_update
+        esp_http_client 
+        esp_https_ota
+        bt
+        json
+)

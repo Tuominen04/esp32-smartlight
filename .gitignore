@@ -1,0 +1,10 @@
+sdkconfig
+sdkconfig.old
+dependencies.lock
+/build
+/.vscode
+/.devcontainer
+
+# own generated files
+gen_*.txt
+*.ps1

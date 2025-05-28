@@ -21,13 +21,29 @@ static const char *OTA_TASK_TAG = "OTA-TASK";
 static const char *OTA_PROGRESS_TAG = "OTA-PROGRESS";
 static const char *OTA_HANDLER_TAG = "OTA-HANDLER";
 
+/** Flag indicating whether an OTA update is currently in progress. */
 static bool ota_in_progress = false;
+
+/** Current progress percentage of the OTA update (0.0 to 100.0). */
 static float ota_progress_percentage = 0.0;
+
+/** Current status message describing the OTA update stage. */
 static char ota_status_message[64] = "Initializing...";
+
+/** Timestamp of the last progress request to implement rate limiting. */
 static int64_t last_progress_request = 0;
 
-// Event handler for OTA updates
-esp_err_t ota_manager_http_event_handler(esp_http_client_event_t *evt)
+/**
+ * @brief HTTP event handler for OTA update operations.
+ *
+ * Handles various HTTP client events during OTA firmware download,
+ * providing logging for connection status, data transfer, and errors.
+ *
+ * @param[in] evt  HTTP client event structure containing event data.
+ *
+ * @return ESP_OK always (events are logged but don't stop the process).
+ */
+static esp_err_t ota_manager_http_event_handler(esp_http_client_event_t *evt)
 {
     switch (evt->event_id) {
     case HTTP_EVENT_ERROR:
@@ -58,8 +74,23 @@ esp_err_t ota_manager_http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-// Function to perform OTA update
-bool ota_manager_perform_ota_update(const char* firmware_url) 
+/**
+ * @brief Perform the actual OTA firmware update process.
+ *
+ * Downloads firmware from the specified URL, validates the image,
+ * writes it to the update partition, and sets it as the boot partition.
+ * Updates progress indicators throughout the process.
+ *
+ * @param[in] firmware_url  URL of the firmware binary to download.
+ *
+ * @return
+ *      - true on successful update (device will reboot)
+ *      - false on any failure during the update process
+ *
+ * @note This function blocks until completion and will restart the device
+ *       on successful update. Progress is updated via global variables.
+ */
+static bool ota_manager_perform_ota_update(const char* firmware_url) 
 {        
     ESP_LOGI(OTA_TAG, "Starting OTA update process from URL: %s", firmware_url);
 
@@ -258,7 +289,18 @@ bool ota_manager_perform_ota_update(const char* firmware_url)
     }
 }
 
-void ota_manager_task_func(void* pvParameter) {
+/**
+ * @brief FreeRTOS task function for handling OTA updates.
+ *
+ * Task wrapper that safely manages memory and calls the OTA update
+ * function. Handles URL memory management and cleanup on completion.
+ *
+ * @param[in] pvParameter  Pointer to dynamically allocated URL string.
+ *
+ * @note The URL parameter is freed within this task. Task deletes itself
+ *       upon completion or failure.
+ */
+static void ota_manager_task_func(void* pvParameter) {
     ESP_LOGI(OTA_TASK_TAG, "OTA task started");
     
     // Make a local copy of the URL string to avoid memory issues
@@ -300,6 +342,18 @@ void ota_manager_task_func(void* pvParameter) {
     vTaskDelete(NULL);
 }
 
+/**
+ * @brief HTTP handler for firmware information requests.
+ *
+ * Returns current firmware details including version, project name,
+ * SHA256 hash, build date/time, and OTA status in JSON format.
+ *
+ * @param[in] req  HTTP request structure for the GET /ota/firmware-info endpoint.
+ *
+ * @return
+ *      - ESP_OK on successful response transmission
+ *      - ESP_FAIL on memory allocation or partition access failure
+ */
 esp_err_t ota_manager_firmware_info_handler(httpd_req_t *req)
 {
     ESP_LOGI(OTA_TAG, "Getting firmware info");
@@ -384,7 +438,21 @@ esp_err_t ota_manager_firmware_info_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-// HTTP endpoint handler for OTA update
+/**
+ * @brief HTTP handler for initiating OTA updates.
+ *
+ * Processes POST requests to start OTA updates, parsing the firmware URL
+ * from JSON payload and launching the update task asynchronously.
+ *
+ * @param[in] req  HTTP request structure for the POST /ota/update endpoint.
+ *
+ * @return
+ *      - ESP_OK on successful task creation and response
+ *      - ESP_FAIL on invalid request, URL parsing, or task creation failure
+ *
+ * @note Returns immediately after starting the task; actual update runs
+ *       in background. Only one OTA process can run at a time.
+ */
 esp_err_t ota_manager_ota_update_handler(httpd_req_t *req)
 {
     ESP_LOGI(OTA_HANDLER_TAG, "Received OTA update request");
@@ -504,6 +572,19 @@ esp_err_t ota_manager_ota_update_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/**
+ * @brief HTTP handler for OTA progress monitoring.
+ *
+ * Returns current OTA status, progress percentage, and status message
+ * in JSON format. Implements rate limiting to prevent excessive requests.
+ *
+ * @param[in] req  HTTP request structure for the GET /ota/progress endpoint.
+ *
+ * @return ESP_OK always (rate limited requests get 503 status).
+ *
+ * @note Rate limited to one request per 500ms during active OTA to
+ *       prevent overwhelming the system.
+ */
 esp_err_t ota_manager_progress_handler(httpd_req_t *req)
 {
     ESP_LOGI(OTA_PROGRESS_TAG, "Received OTA progress request");
@@ -541,13 +622,36 @@ esp_err_t ota_manager_progress_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/**
+ * @brief Initialize the OTA manager module.
+ *
+ * Performs basic initialization of the OTA management system.
+ * Currently just logs initialization status.
+ *
+ * @return ESP_OK always.
+ */
 esp_err_t ota_manager_init(void)
 {
     ESP_LOGI(OTA_TAG, "OTA Manager initialized");
     return ESP_OK;
 }
 
-esp_err_t ota_manager_start_update(const char* firmware_url)
+/**
+ * @brief Start an OTA update programmatically.
+ *
+ * Alternative to HTTP handler for starting OTA updates from application code.
+ * Creates a background task to handle the update process.
+ *
+ * @param[in] firmware_url  URL of the firmware binary to download.
+ *
+ * @return
+ *      - ESP_OK on successful task creation
+ *      - ESP_ERR_INVALID_ARG if URL is NULL
+ *      - ESP_ERR_INVALID_STATE if OTA already in progress
+ *      - ESP_ERR_NO_MEM on memory allocation failure
+ *      - ESP_FAIL on task creation failure
+ */
+esp_err_t ota_manager_start_update(const char* firmware_url) // useage in the future?
 {
     if (!firmware_url) {
         return ESP_ERR_INVALID_ARG;
@@ -585,16 +689,33 @@ esp_err_t ota_manager_start_update(const char* firmware_url)
     return ESP_OK;
 }
 
-bool ota_manager_is_in_progress(void)
+/**
+ * @brief Check if an OTA update is currently in progress.
+ *
+ * @return
+ *      - true if OTA update is active
+ *      - false if no OTA operation is running
+ */
+bool ota_manager_is_in_progress(void) // useage in the future?
 {
     return ota_in_progress;
 }
 
+/**
+ * @brief Get the current OTA progress percentage.
+ *
+ * @return Progress value from 0.0 to 100.0 indicating download completion.
+ */
 float ota_manager_get_progress(void)
 {
     return ota_progress_percentage;
 }
 
+/**
+ * @brief Get the current OTA status message.
+ *
+ * @return Pointer to string describing the current OTA operation stage.
+ */
 const char* ota_manager_get_status_message(void)
 {
     return ota_status_message;

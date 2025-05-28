@@ -32,6 +32,9 @@
 /** Maximum length for device ID strings including null terminator. */
 #define MAX_DEVICE_ID_LEN 9
 
+/** Index of the main application profile in the profile table. */
+#define PROFILE_APP_IDX 0
+
 /* === NVS configuration === */
 /* ========================= */
 /** NVS namespace name for storing device-related data. */
@@ -53,6 +56,14 @@
 /* ========================== */
 /** Maximum size for HTTP response buffers in bytes. */
 #define MAX_HTTP_OUTPUT_BUFFER 2048
+
+/* === BLE configuration === */
+/* ========================= */
+/** Number of GATT profiles registered with the BLE stack. */
+#define PROFILE_NUM 1
+
+/** Application ID used for GATT server registration. */
+#define ESP_APP_ID 0
 
 /* === Task priorities === */
 /* ======================= */

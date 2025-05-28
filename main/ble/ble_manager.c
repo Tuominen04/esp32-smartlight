@@ -17,7 +17,7 @@
 // Include other modules
 #include "../device/device_info.h"
 #include "../wifi/wifi_manager.h"
-#include "../common/credentials.h"
+#include "../common/common_defs.h"
 #include "../storage/nvs_manager.h"
 
 static const char *BLE_TAG = "BLUETOOTH";
@@ -32,8 +32,37 @@ static size_t wifi_buffer_len = 0;  // Actual length of data in wifi_buffer
 
 static uint16_t device_info_char_handle = 0; // Handle for the device info GATT characteristic
 
+/** 
+ * Primary BLE service UUID for device configuration.
+ * Service UUID: 4b9131c3-c9c5-cc8f-9e45-b51f01c2af4f
+ */
+static uint8_t esp_service_uuid[16] = { 
+    0x4f, 0xaf, 0xc2, 0x01, 0x1f, 0xb5, 0x45, 0x9e,
+    0x8f, 0xcc, 0xc5, 0xc9, 0xc3, 0x31, 0x91, 0x4b 
+};
+
+/** 
+ * BLE characteristic UUID for WiFi credentials exchange.
+ * Characteristic UUID: a8261b36-07ea-f5b7-8846-e1363e48b5be
+ * Used for receiving WiFi SSID and password from mobile app.
+ */
+static uint8_t wifi_characteristic_uuid[16] = {
+    0xbe, 0xb5, 0x48, 0x3e, 0x36, 0xe1, 0x46, 0x88,
+    0xb7, 0xf5, 0xea, 0x07, 0x36, 0x1b, 0x26, 0xa8
+};
+
+/** 
+ * BLE characteristic UUID for device information exchange.
+ * Characteristic UUID: 145f8763-1632-c09d-547c-bb6a451e20cf
+ * Used for sending device IP, name, and version back to mobile app.
+ */
+static uint8_t device_info_characteristic_uuid[16] = {
+    0xcf, 0x20, 0x1e, 0x45, 0x6a, 0xbb, 0x7c, 0x54,
+    0x9d, 0xc0, 0x32, 0x16, 0x63, 0x87, 0x5f, 0x14  
+};
+
 /** BLE advertising parameters used for broadcasting the device presence. */
-static const esp_ble_adv_params_t adv_params = {
+static esp_ble_adv_params_t adv_params = {
     .adv_int_min = 0x20,
     .adv_int_max = 0x40,
     .adv_type = ADV_TYPE_IND,
@@ -43,7 +72,7 @@ static const esp_ble_adv_params_t adv_params = {
 };
 
 /** Primary BLE advertising data sent to scanners (e.g., mobile apps). */
-static const esp_ble_adv_data_t adv_data = {
+static esp_ble_adv_data_t adv_data = {
     .set_scan_rsp = false,
     .include_name = true,
     .include_txpower = false,
@@ -60,7 +89,7 @@ static const esp_ble_adv_data_t adv_data = {
 };
 
 /** Optional scan response data, sent upon scan request. */
-static const esp_ble_adv_data_t scan_rsp_data = {
+static esp_ble_adv_data_t scan_rsp_data = {
     .set_scan_rsp = true,
     .include_name = true,
     .include_txpower = true,

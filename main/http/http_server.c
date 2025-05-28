@@ -7,7 +7,6 @@
 // Include other modules for handlers
 #include "../gpio/gpio_control.h"
 #include "../ota/ota_manager.h"
-#include "../common/credentials.h"
 #include "../device/device_info.h"
 
 static const char *HTTP_TAG = "HTTP_SERVER";

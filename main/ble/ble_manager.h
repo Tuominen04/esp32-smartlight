@@ -11,13 +11,27 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-// Public functions that actually exist
+/**
+ * @brief Initialize the BLE manager.
+ *
+ * This function sets up the Bluetooth controller, initializes and enables Bluedroid,
+ * registers the GAP and GATT callbacks, and starts the BLE GATT server.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - Appropriate error code from esp_err_t on failure
+ */
 esp_err_t ble_manager_init(void);
 
-// Task functions
+/**
+ * @brief Task to handle confirmation from the mobile app that it received device info.
+ *
+ * This FreeRTOS task runs in the background, monitoring a flag that indicates whether
+ * the device is waiting for confirmation. Based on success or failure, it handles
+ * device reset or re-advertising over BLE.
+ *
+ * @param pvParameters Unused task parameter (pass NULL).
+ */
 void ble_manager_handle_device_info_confirmation(void* pvParameters);
-
-// Legacy compatibility
-void ble_init(void);
 
 #endif // BLE_MANAGER_H

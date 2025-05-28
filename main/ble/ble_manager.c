@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "cJSON.h"
 #include "esp_log.h"
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
@@ -12,7 +13,6 @@
 #include "esp_gatt_common_api.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "cJSON.h"
 
 // Include other modules
 #include "../device/device_info.h"
@@ -26,27 +26,14 @@ static const char *GAP_TAG = "GAP";
 
 static bool waiting_confrimation = false;
 static bool confirmation_succesfull = false;
-static char wifi_buffer[256] = {0};
-static size_t wifi_buffer_len = 0;
-static uint16_t device_info_char_handle = 0;
 
-struct gatts_profile_inst {
-    esp_gatts_cb_t gatts_cb;
-    uint16_t gatts_if;
-    uint16_t app_id;
-    uint16_t conn_id;
-    uint16_t service_handle;
-    esp_gatt_srvc_id_t service_id;
-    uint16_t char_handle;
-    esp_bt_uuid_t char_uuid;
-    esp_gatt_perm_t perm;
-    esp_gatt_char_prop_t property;
-};
+static char wifi_buffer[256] = {0}; // Temporary buffer for WiFi credentials
+static size_t wifi_buffer_len = 0;  // Actual length of data in wifi_buffer
 
-static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM];
+static uint16_t device_info_char_handle = 0; // Handle for the device info GATT characteristic
 
-// Advertising parameters
-static esp_ble_adv_params_t adv_params = {
+/** BLE advertising parameters used for broadcasting the device presence. */
+static const esp_ble_adv_params_t adv_params = {
     .adv_int_min = 0x20,
     .adv_int_max = 0x40,
     .adv_type = ADV_TYPE_IND,
@@ -55,8 +42,8 @@ static esp_ble_adv_params_t adv_params = {
     .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
-// The advertising data
-static esp_ble_adv_data_t adv_data = {
+/** Primary BLE advertising data sent to scanners (e.g., mobile apps). */
+static const esp_ble_adv_data_t adv_data = {
     .set_scan_rsp = false,
     .include_name = true,
     .include_txpower = false,
@@ -72,8 +59,8 @@ static esp_ble_adv_data_t adv_data = {
     .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
 };
 
-// Scan response data (optional)
-static esp_ble_adv_data_t scan_rsp_data = {
+/** Optional scan response data, sent upon scan request. */
+static const esp_ble_adv_data_t scan_rsp_data = {
     .set_scan_rsp = true,
     .include_name = true,
     .include_txpower = true,
@@ -87,6 +74,41 @@ static esp_ble_adv_data_t scan_rsp_data = {
     .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
 };
 
+/**
+ * GATT profile structure holding all necessary information for BLE profile operations.
+ */
+struct gatts_profile_inst {
+    esp_gatts_cb_t gatts_cb;
+    uint16_t gatts_if;
+    uint16_t app_id;
+    uint16_t conn_id;
+    uint16_t service_handle;
+    esp_gatt_srvc_id_t service_id;
+    uint16_t char_handle;
+    esp_bt_uuid_t char_uuid;
+    esp_gatt_perm_t perm;
+    esp_gatt_char_prop_t property;
+};
+
+/** Array of BLE GATT profile instances. */
+static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM];
+
+/**
+ * @brief GATT Server event handler for BLE manager
+ *
+ * This function handles events from the ESP GATT Server and dispatches them to the
+ * appropriate profile-specific callback based on the interface and event type.
+ *
+ * @param[in] event      The GATT server event type (e.g., registration, read, write).
+ * @param[in] gatts_if   The GATT interface for the event, or ESP_GATT_IF_NONE.
+ * @param[in] param      Pointer to the event parameter union containing event-specific data.
+ *
+ * @note On receiving the ESP_GATTS_REG_EVT event, this function attempts to create a
+ *       BLE service and stores the GATT interface in the global profile table if registration is successful.
+ *
+ *       For all events, it loops through all registered profiles and calls their
+ *       respective callbacks if the interface matches or is ESP_GATT_IF_NONE.
+ */
 static void ble_manager_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     if (event == ESP_GATTS_REG_EVT) {
@@ -117,7 +139,26 @@ static void ble_manager_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt
     } while (0);
 }
 
-// BLE GAP event handler
+/**
+ * @brief GAP event handler for BLE manager
+ *
+ * Handles GAP (Generic Access Profile) events from the BLE stack and manages the advertising
+ * process accordingly. This function is responsible for responding to advertising and scan response
+ * configuration events and initiating advertising when appropriate.
+ *
+ * @param[in] event   The GAP event type (e.g., advertising data set complete, start/stop complete).
+ * @param[in] param   Pointer to the union containing event-specific parameters.
+ *
+ * @note This function automatically starts advertising once the advertisement or scan response
+ *       data is successfully set. It also logs whether advertising has started or stopped successfully.
+ *
+ * @events
+ * - ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT: Start advertising after setting adv data.
+ * - ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT: Start advertising after setting raw adv data.
+ * - ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT: Start advertising after setting scan response data.
+ * - ESP_GAP_BLE_ADV_START_COMPLETE_EVT: Log success/failure of advertising start.
+ * - ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT: Log success/failure of advertising stop.
+ */
 static void ble_manager_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
@@ -149,6 +190,26 @@ static void ble_manager_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_
     }
 }
 
+/**
+ * @brief GATT server profile event handler.
+ *
+ * This function handles GATT server (GATTS) events for a BLE peripheral device.
+ * It processes events such as application registration, service creation, 
+ * characteristic addition, write events, and client connection management.
+ *
+ * @param event     GATT server event type.
+ * @param gatts_if  GATT interface handle provided by the system.
+ * @param param     Pointer to the GATT server callback parameters.
+ *
+ * The handler performs the following:
+ * - Registers the GATT application and configures advertising and scan response data.
+ * - Creates a primary service with two characteristics:
+ *   - WiFi credentials characteristic (read/write).
+ *   - Device info characteristic (read/notify).
+ * - Handles write events, buffering incoming data and parsing JSON to detect WiFi credentials or confirmation messages.
+ * - Sends appropriate responses for each write.
+ * - Handles device connection and disconnection events.
+ */
 static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     switch (event) {
@@ -416,6 +477,26 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
     }
 }
 
+/**
+ * @brief BLE device info confirmation handler task.
+ *
+ * This task continuously monitors whether the mobile application has confirmed
+ * receipt of the device info via BLE. If confirmation is not received, it clears
+ * stored WiFi credentials and restarts BLE advertising to retry the setup process.
+ *
+ * Behavior:
+ * - Runs in an infinite loop with a 1-second delay per iteration.
+ * - If a confirmation is pending (`waiting_confrimation` is true):
+ *   - If the confirmation was unsuccessful (`!confirmation_succesfull`):
+ *     - Deletes stored WiFi credentials from NVS.
+ *     - Disconnects from the current WiFi.
+ *     - Logs the event and restarts BLE advertising.
+ *   - If the confirmation was successful:
+ *     - Logs success.
+ *   - Resets the `waiting_confrimation` flag to false.
+ *
+ * @param arg Unused task parameter.
+ */
 void ble_manager_handle_device_info_confirmation(void*)
 {
     while (1) {
@@ -438,6 +519,21 @@ void ble_manager_handle_device_info_confirmation(void*)
     }
 }
 
+/**
+ * @brief Initializes the BLE subsystem.
+ *
+ * This function sets up the BLE stack by performing the following steps:
+ * 1. Releases memory allocated for classic Bluetooth, as only BLE is used.
+ * 2. Initializes and enables the BT controller in BLE mode.
+ * 3. Initializes and enables the Bluedroid stack.
+ * 4. Registers GATT server and GAP event handler callbacks.
+ * 5. Registers the BLE GATT application profile.
+ * 6. Sets the profile-specific event handler and interface.
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_* on failure, with error logged
+ */
 esp_err_t ble_manager_init(void)
 {
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
@@ -493,8 +589,4 @@ esp_err_t ble_manager_init(void)
     gl_profile_tab[PROFILE_APP_IDX].gatts_if = ESP_GATT_IF_NONE;
 
     return ESP_OK;
-}
-
-void ble_init(void) {
-    ble_manager_init();
 }

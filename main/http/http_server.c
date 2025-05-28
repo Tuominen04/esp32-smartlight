@@ -89,6 +89,154 @@ static esp_err_t light_toggle_handler(httpd_req_t *req)
 }
 
 /**
+ * @brief Register HTTP routes for light control operations.
+ *
+ * Registers the following light control endpoints with the HTTP server:
+ * - GET /light: Returns current device and light state in JSON format
+ * - PUT /toggle: Toggles the light state and returns new state as text
+ *
+ * @return
+ *      - ESP_OK on successful route registration
+ *      - ESP_ERR_INVALID_STATE if server is not started
+ *      - ESP_ERR_* on route registration failure
+ *
+ * @note This function requires the HTTP server to be started before calling.
+ */
+static esp_err_t http_server_register_light_routes(void)
+{
+    if (s_server == NULL) {
+        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Status endpoint
+    httpd_uri_t status_uri = {
+        .uri       = "/light",
+        .method    = HTTP_GET,
+        .handler   = status_get_handler,
+        .user_ctx  = NULL
+    };
+    esp_err_t result = httpd_register_uri_handler(s_server, &status_uri);
+    if (result != ESP_OK) {
+        ESP_LOGE(HTTP_TAG, "Failed to register status handler");
+        return result;
+    }
+
+    // Toggle endpoint
+    httpd_uri_t toggle_uri = {
+        .uri       = "/toggle",
+        .method    = HTTP_PUT,
+        .handler   = light_toggle_handler,
+        .user_ctx  = NULL
+    };
+    result = httpd_register_uri_handler(s_server, &toggle_uri);
+    if (result != ESP_OK) {
+        ESP_LOGE(HTTP_TAG, "Failed to register toggle handler");
+        return result;
+    }
+    
+    ESP_LOGI(HTTP_TAG, "Light control routes registered");
+    return ESP_OK;
+}
+
+/**
+ * @brief Register HTTP routes for OTA (Over-The-Air) update operations.
+ *
+ * Registers the following OTA management endpoints with the HTTP server:
+ * - GET /ota/firmware-info: Returns current firmware information
+ * - POST /ota/update: Initiates OTA firmware update process
+ * - GET /ota/progress: Returns OTA update progress and status
+ *
+ * @return
+ *      - ESP_OK on successful route registration
+ *      - ESP_ERR_INVALID_STATE if server is not started
+ *      - ESP_ERR_* on route registration failure
+ *
+ * @note The actual OTA handlers are implemented in the ota_manager module.
+ */
+static esp_err_t http_server_register_ota_routes(void)
+{
+    if (s_server == NULL) {
+        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Firmware info endpoint
+    httpd_uri_t firmware_info_uri = {
+        .uri       = "/ota/firmware-info",
+        .method    = HTTP_GET,
+        .handler   = ota_manager_firmware_info_handler,
+        .user_ctx  = NULL
+    };
+    esp_err_t result = httpd_register_uri_handler(s_server, &firmware_info_uri);
+    if (result != ESP_OK) {
+        ESP_LOGE(HTTP_TAG, "Failed to register firmware info handler");
+        return result;
+    }
+    
+    // OTA update endpoint
+    httpd_uri_t ota_update_uri = {
+        .uri       = "/ota/update",
+        .method    = HTTP_POST,
+        .handler   = ota_manager_ota_update_handler,
+        .user_ctx  = NULL
+    };
+    result = httpd_register_uri_handler(s_server, &ota_update_uri);
+    if (result != ESP_OK) {
+        ESP_LOGE(HTTP_TAG, "Failed to register OTA update handler");
+        return result;
+    }
+    
+    // OTA progress endpoint
+    httpd_uri_t ota_progress_uri = {
+        .uri       = "/ota/progress",
+        .method    = HTTP_GET,
+        .handler   = ota_manager_progress_handler,
+        .user_ctx  = NULL
+    };
+    result = httpd_register_uri_handler(s_server, &ota_progress_uri);
+    if (result != ESP_OK) {
+        ESP_LOGE(HTTP_TAG, "Failed to register OTA progress handler");
+        return result;
+    }
+    
+    ESP_LOGI(HTTP_TAG, "OTA routes registered");
+    return ESP_OK;
+}
+
+/**
+ * @brief Register all available HTTP routes with the server.
+ *
+ * Convenience function that registers both light control and OTA management
+ * routes in a single call. This ensures all application endpoints are
+ * available for client requests.
+ *
+ * @return
+ *      - ESP_OK on successful registration of all routes
+ *      - ESP_ERR_* on failure during route registration
+ *
+ * @note If any route registration fails, the function returns immediately
+ *       with the error code, potentially leaving some routes unregistered.
+ */
+static esp_err_t http_server_register_all_routes(void)
+{
+    esp_err_t result;
+    
+    result = http_server_register_light_routes();
+    if (result != ESP_OK) {
+        return result;
+    }
+    
+    result = http_server_register_ota_routes();
+    if (result != ESP_OK) {
+        return result;
+    }
+    
+    ESP_LOGI(HTTP_TAG, "All routes registered successfully");
+    return ESP_OK;
+}
+
+/**
  * @brief Initialize the HTTP server module.
  *
  * Performs basic initialization of the HTTP server module without starting
@@ -278,152 +426,4 @@ void http_server_set_max_connections(int max_connections)
     }
     s_max_connections = max_connections;
     ESP_LOGI(HTTP_TAG, "HTTP server max connections set to %d", max_connections);
-}
-
-/**
- * @brief Register HTTP routes for light control operations.
- *
- * Registers the following light control endpoints with the HTTP server:
- * - GET /light: Returns current device and light state in JSON format
- * - PUT /toggle: Toggles the light state and returns new state as text
- *
- * @return
- *      - ESP_OK on successful route registration
- *      - ESP_ERR_INVALID_STATE if server is not started
- *      - ESP_ERR_* on route registration failure
- *
- * @note This function requires the HTTP server to be started before calling.
- */
-static esp_err_t http_server_register_light_routes(void)
-{
-    if (s_server == NULL) {
-        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
-        return ESP_ERR_INVALID_STATE;
-    }
-    
-    // Status endpoint
-    httpd_uri_t status_uri = {
-        .uri       = "/light",
-        .method    = HTTP_GET,
-        .handler   = status_get_handler,
-        .user_ctx  = NULL
-    };
-    esp_err_t result = httpd_register_uri_handler(s_server, &status_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register status handler");
-        return result;
-    }
-
-    // Toggle endpoint
-    httpd_uri_t toggle_uri = {
-        .uri       = "/toggle",
-        .method    = HTTP_PUT,
-        .handler   = light_toggle_handler,
-        .user_ctx  = NULL
-    };
-    result = httpd_register_uri_handler(s_server, &toggle_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register toggle handler");
-        return result;
-    }
-    
-    ESP_LOGI(HTTP_TAG, "Light control routes registered");
-    return ESP_OK;
-}
-
-/**
- * @brief Register HTTP routes for OTA (Over-The-Air) update operations.
- *
- * Registers the following OTA management endpoints with the HTTP server:
- * - GET /ota/firmware-info: Returns current firmware information
- * - POST /ota/update: Initiates OTA firmware update process
- * - GET /ota/progress: Returns OTA update progress and status
- *
- * @return
- *      - ESP_OK on successful route registration
- *      - ESP_ERR_INVALID_STATE if server is not started
- *      - ESP_ERR_* on route registration failure
- *
- * @note The actual OTA handlers are implemented in the ota_manager module.
- */
-static esp_err_t http_server_register_ota_routes(void)
-{
-    if (s_server == NULL) {
-        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
-        return ESP_ERR_INVALID_STATE;
-    }
-    
-    // Firmware info endpoint
-    httpd_uri_t firmware_info_uri = {
-        .uri       = "/ota/firmware-info",
-        .method    = HTTP_GET,
-        .handler   = ota_manager_firmware_info_handler,
-        .user_ctx  = NULL
-    };
-    esp_err_t result = httpd_register_uri_handler(s_server, &firmware_info_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register firmware info handler");
-        return result;
-    }
-    
-    // OTA update endpoint
-    httpd_uri_t ota_update_uri = {
-        .uri       = "/ota/update",
-        .method    = HTTP_POST,
-        .handler   = ota_manager_ota_update_handler,
-        .user_ctx  = NULL
-    };
-    result = httpd_register_uri_handler(s_server, &ota_update_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register OTA update handler");
-        return result;
-    }
-    
-    // OTA progress endpoint
-    httpd_uri_t ota_progress_uri = {
-        .uri       = "/ota/progress",
-        .method    = HTTP_GET,
-        .handler   = ota_manager_progress_handler,
-        .user_ctx  = NULL
-    };
-    result = httpd_register_uri_handler(s_server, &ota_progress_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register OTA progress handler");
-        return result;
-    }
-    
-    ESP_LOGI(HTTP_TAG, "OTA routes registered");
-    return ESP_OK;
-}
-
-/**
- * @brief Register all available HTTP routes with the server.
- *
- * Convenience function that registers both light control and OTA management
- * routes in a single call. This ensures all application endpoints are
- * available for client requests.
- *
- * @return
- *      - ESP_OK on successful registration of all routes
- *      - ESP_ERR_* on failure during route registration
- *
- * @note If any route registration fails, the function returns immediately
- *       with the error code, potentially leaving some routes unregistered.
- */
-static esp_err_t http_server_register_all_routes(void)
-{
-    esp_err_t result;
-    
-    result = http_server_register_light_routes();
-    if (result != ESP_OK) {
-        return result;
-    }
-    
-    result = http_server_register_ota_routes();
-    if (result != ESP_OK) {
-        return result;
-    }
-    
-    ESP_LOGI(HTTP_TAG, "All routes registered successfully");
-    return ESP_OK;
 }

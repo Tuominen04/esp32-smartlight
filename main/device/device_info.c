@@ -10,7 +10,7 @@
 #include "esp_app_format.h"
 #include "cJSON.h"
 
-// Include BLE headers that we need
+// Include BLE headers that needed
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -19,27 +19,30 @@
 // Other moduls
 #include "../storage/nvs_manager.h"
 
-// We'll need these from main - for now, declare as extern
 static const char *DEVICE_TAG = "DEVICE_HANDLING";
 static const char *FIRMWARE_TAG = "FIRMWARE";
 
+/** Handle for the BLE characteristic used to send device information. */
 static uint16_t device_info_char_handle = 0;
 
-// We need access to BLE profile info - these will be set by BLE module
+/** BLE GATT server interface, set by BLE module when connected. */
 static esp_gatt_if_t ble_gatts_if = ESP_GATT_IF_NONE;
+
+/** BLE connection ID, set by BLE module when connected. */
 static uint16_t ble_conn_id = 0;
 
-// Function to set BLE connection info (called by BLE module)
-void device_info_set_ble_info(esp_gatt_if_t gatts_if, uint16_t conn_id) {
-    ble_gatts_if = gatts_if;
-    ble_conn_id = conn_id;
-}
-
-void device_info_set_ble_handle(uint16_t handle) {
-    device_info_char_handle = handle;
-}
-
-bool load_device_info(char* out_device_name, size_t name_buf_size, char* out_device_id, size_t id_buf_size) {
+/**
+ * @brief Load stored device information from NVS.
+ *
+ * Attempts to load the device name and device ID from non-volatile storage.
+ *
+ * @param[out] out_device_name   Buffer to store the device name.
+ * @param[in]  name_buf_size     Size of the device name buffer.
+ * @param[out] out_device_id     Buffer to store the device ID.
+ * @param[in]  id_buf_size       Size of the device ID buffer.
+ * @return true if loading was successful, false otherwise.
+ */
+static bool load_device_info(char* out_device_name, size_t name_buf_size, char* out_device_id, size_t id_buf_size) {
     esp_err_t err = nvs_manager_get_device_info(out_device_name, name_buf_size, out_device_id, id_buf_size);
 
     if (err == ESP_OK) {
@@ -51,6 +54,39 @@ bool load_device_info(char* out_device_name, size_t name_buf_size, char* out_dev
     }
 }
 
+/**
+ * @brief Set BLE GATT interface and connection ID.
+ *
+ * Called by the BLE module upon device connection to set up the necessary BLE context.
+ *
+ * @param gatts_if   BLE GATT interface.
+ * @param conn_id    BLE connection ID.
+ */
+void device_info_set_ble_info(esp_gatt_if_t gatts_if, uint16_t conn_id) {
+    ble_gatts_if = gatts_if;
+    ble_conn_id = conn_id;
+}
+
+/**
+ * @brief Set the BLE characteristic handle used to send device information.
+ *
+ * Called by the BLE module after the characteristic is created.
+ *
+ * @param handle  BLE GATT characteristic handle.
+ */
+void device_info_set_ble_handle(uint16_t handle) {
+    device_info_char_handle = handle;
+}
+
+/**
+ * @brief Save device information and WiFi credentials to NVS.
+ *
+ * This function creates a unique device name and ID using the MAC address.
+ * If valid device info already exists in NVS, it skips saving again.
+ *
+ * @param ssid      WiFi SSID to save.
+ * @param password  WiFi password to save.
+ */
 void device_manager_save_device_info(const char* ssid, const char* password) {
     // Check if already saved
     char existing_name[32] = {0};
@@ -91,6 +127,12 @@ void device_manager_save_device_info(const char* ssid, const char* password) {
     }
 }
 
+/**
+ * @brief Send device information to the mobile app via BLE.
+ *
+ * Builds a JSON payload with device name, ID, IP address, and firmware version,
+ * then updates the BLE characteristic and sends a notification if connected.
+ */
 void send_device_info_via_ble(void) {
     if (device_info_char_handle == 0 || ble_gatts_if == ESP_GATT_IF_NONE) {
         ESP_LOGE(DEVICE_TAG, "BLE not initialized or device info characteristic not created");
@@ -158,6 +200,15 @@ void send_device_info_via_ble(void) {
     free(json_str);
 }
 
+/**
+ * @brief Get information about the currently running firmware.
+ *
+ * Returns a dynamically allocated structure containing metadata such as
+ * firmware version, project name, and compile time.
+ *
+ * @return Pointer to an `esp_app_desc_t` structure, or NULL on failure.
+ *         Caller is responsible for freeing the memory.
+ */
 esp_app_desc_t* get_firmware_info(void) {
     const esp_partition_t *running = esp_ota_get_running_partition();
     esp_app_desc_t *app_desc = malloc(sizeof(esp_app_desc_t));

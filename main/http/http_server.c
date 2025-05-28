@@ -12,14 +12,36 @@
 
 static const char *HTTP_TAG = "HTTP_SERVER";
 
-// Private variables
+/** HTTP server handle for managing the web server instance. */
 static httpd_handle_t s_server = NULL;
+
+/** Flag indicating whether the HTTP server is currently running. */
 static bool s_server_running = false;
+
+/** TCP port number on which the HTTP server listens for connections. */
 static uint16_t s_server_port = 80;
+
+/** Stack size allocated for HTTP server tasks in bytes. */
 static size_t s_stack_size = 8192;
+
+/** Maximum number of simultaneous HTTP connections allowed. */
 static int s_max_connections = 3;
 
-// Light control handlers
+/**
+ * @brief HTTP handler for light status GET requests.
+ *
+ * Handles GET requests to the `/light` endpoint, returning the current
+ * device number and light state in JSON format. This provides a RESTful
+ * interface for querying the current status of the light device.
+ *
+ * @param[in] req  HTTP request structure containing client request data.
+ *
+ * @return
+ *      - ESP_OK on successful response transmission
+ *      - ESP_FAIL on error during response handling
+ *
+ * @note Response format: {"device":1,"state":"on"|"off"}
+ */
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
     char json_resp[100];
@@ -33,6 +55,21 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+/**
+ * @brief HTTP handler for light toggle PUT requests.
+ *
+ * Handles PUT requests to the `/toggle` endpoint, toggling the current
+ * light state and returning the new state as plain text. This provides
+ * a simple interface for switching the light on/off remotely.
+ *
+ * @param[in] req  HTTP request structure containing client request data.
+ *
+ * @return
+ *      - ESP_OK on successful light toggle and response
+ *      - ESP_FAIL on error during processing
+ *
+ * @note Response is plain text: "ON" or "OFF" based on new light state.
+ */
 static esp_err_t light_toggle_handler(httpd_req_t *req)
 {
     // Toggle the light state
@@ -51,7 +88,20 @@ static esp_err_t light_toggle_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-// Initialize HTTP server (but don't start it)
+/**
+ * @brief Initialize the HTTP server module.
+ *
+ * Performs basic initialization of the HTTP server module without starting
+ * the actual server. This allows configuration to be set before the server
+ * begins accepting connections.
+ *
+ * @return
+ *      - ESP_OK on successful initialization
+ *      - ESP_FAIL if server is already initialized
+ *
+ * @note This function only initializes the module state; use http_server_start()
+ *       to begin accepting HTTP connections.
+ */
 esp_err_t http_server_init(void)
 {
     if (s_server != NULL) {
@@ -63,7 +113,21 @@ esp_err_t http_server_init(void)
     return ESP_OK;
 }
 
-// Start the HTTP server
+/**
+ * @brief Start the HTTP server and begin accepting connections.
+ *
+ * Creates and starts the HTTP server with the configured parameters,
+ * then registers all defined routes. The server will begin accepting
+ * client connections on the specified port after successful startup.
+ *
+ * @return
+ *      - ESP_OK on successful server start and route registration
+ *      - ESP_FAIL if server is already running
+ *      - ESP_ERR_* on HTTP server creation or route registration failure
+ *
+ * @note The server uses the configuration set via http_server_set_* functions.
+ *       All routes are automatically registered upon successful startup.
+ */
 esp_err_t http_server_start(void)
 {
     if (s_server != NULL) {
@@ -102,7 +166,20 @@ esp_err_t http_server_start(void)
     }
 }
 
-// Stop the HTTP server
+/**
+ * @brief Stop the HTTP server and close all connections.
+ *
+ * Gracefully shuts down the HTTP server, closing all active client
+ * connections and freeing associated resources. The server will stop
+ * accepting new connections immediately.
+ *
+ * @return
+ *      - ESP_OK on successful server shutdown
+ *      - ESP_FAIL if server was not running
+ *      - ESP_ERR_* on shutdown failure
+ *
+ * @note After stopping, the server can be restarted with http_server_start().
+ */
 esp_err_t http_server_stop(void)
 {
     if (s_server == NULL) {
@@ -122,13 +199,33 @@ esp_err_t http_server_stop(void)
     return result;
 }
 
-// Check if server is running
+/**
+ * @brief Check if the HTTP server is currently running.
+ *
+ * Returns the current operational status of the HTTP server, indicating
+ * whether it is actively accepting and processing client connections.
+ *
+ * @return
+ *      - true if the server is running and accepting connections
+ *      - false if the server is stopped or not initialized
+ */
 bool http_server_is_running(void)
 {
     return s_server_running && (s_server != NULL);
 }
 
-// Configuration setters
+/**
+ * @brief Set the TCP port for the HTTP server.
+ *
+ * Configures the port number on which the HTTP server will listen for
+ * incoming connections. This setting only takes effect when the server
+ * is started; it cannot be changed while the server is running.
+ *
+ * @param[in] port  TCP port number (typically 80 for HTTP, 443 for HTTPS).
+ *
+ * @note Changes only apply to future server starts. Stop and restart
+ *       the server to apply port changes.
+ */
 void http_server_set_port(uint16_t port)
 {
     if (s_server != NULL) {
@@ -139,6 +236,18 @@ void http_server_set_port(uint16_t port)
     ESP_LOGI(HTTP_TAG, "HTTP server port set to %d", port);
 }
 
+/**
+ * @brief Set the stack size for HTTP server tasks.
+ *
+ * Configures the amount of memory allocated for the HTTP server's task
+ * stack. Larger stack sizes may be needed for complex request handlers
+ * or when processing large amounts of data.
+ *
+ * @param[in] stack_size  Stack size in bytes for HTTP server tasks.
+ *
+ * @note Changes only apply to future server starts. The default stack
+ *       size is usually sufficient for basic operations.
+ */
 void http_server_set_stack_size(size_t stack_size)
 {
     if (s_server != NULL) {
@@ -149,6 +258,18 @@ void http_server_set_stack_size(size_t stack_size)
     ESP_LOGI(HTTP_TAG, "HTTP server stack size set to %d", stack_size);
 }
 
+/**
+ * @brief Set the maximum number of simultaneous connections.
+ *
+ * Configures the limit for concurrent client connections that the HTTP
+ * server will accept. Additional connection attempts will be rejected
+ * when this limit is reached.
+ *
+ * @param[in] max_connections  Maximum number of simultaneous connections.
+ *
+ * @note Lower values reduce memory usage but may limit concurrent access.
+ *       Higher values increase resource usage but improve accessibility.
+ */
 void http_server_set_max_connections(int max_connections)
 {
     if (s_server != NULL) {
@@ -159,8 +280,21 @@ void http_server_set_max_connections(int max_connections)
     ESP_LOGI(HTTP_TAG, "HTTP server max connections set to %d", max_connections);
 }
 
-// Register light control routes
-esp_err_t http_server_register_light_routes(void)
+/**
+ * @brief Register HTTP routes for light control operations.
+ *
+ * Registers the following light control endpoints with the HTTP server:
+ * - GET /light: Returns current device and light state in JSON format
+ * - PUT /toggle: Toggles the light state and returns new state as text
+ *
+ * @return
+ *      - ESP_OK on successful route registration
+ *      - ESP_ERR_INVALID_STATE if server is not started
+ *      - ESP_ERR_* on route registration failure
+ *
+ * @note This function requires the HTTP server to be started before calling.
+ */
+static esp_err_t http_server_register_light_routes(void)
 {
     if (s_server == NULL) {
         ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
@@ -197,8 +331,22 @@ esp_err_t http_server_register_light_routes(void)
     return ESP_OK;
 }
 
-// Register OTA routes
-esp_err_t http_server_register_ota_routes(void)
+/**
+ * @brief Register HTTP routes for OTA (Over-The-Air) update operations.
+ *
+ * Registers the following OTA management endpoints with the HTTP server:
+ * - GET /ota/firmware-info: Returns current firmware information
+ * - POST /ota/update: Initiates OTA firmware update process
+ * - GET /ota/progress: Returns OTA update progress and status
+ *
+ * @return
+ *      - ESP_OK on successful route registration
+ *      - ESP_ERR_INVALID_STATE if server is not started
+ *      - ESP_ERR_* on route registration failure
+ *
+ * @note The actual OTA handlers are implemented in the ota_manager module.
+ */
+static esp_err_t http_server_register_ota_routes(void)
 {
     if (s_server == NULL) {
         ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
@@ -248,8 +396,21 @@ esp_err_t http_server_register_ota_routes(void)
     return ESP_OK;
 }
 
-// Register all routes
-esp_err_t http_server_register_all_routes(void)
+/**
+ * @brief Register all available HTTP routes with the server.
+ *
+ * Convenience function that registers both light control and OTA management
+ * routes in a single call. This ensures all application endpoints are
+ * available for client requests.
+ *
+ * @return
+ *      - ESP_OK on successful registration of all routes
+ *      - ESP_ERR_* on failure during route registration
+ *
+ * @note If any route registration fails, the function returns immediately
+ *       with the error code, potentially leaving some routes unregistered.
+ */
+static esp_err_t http_server_register_all_routes(void)
 {
     esp_err_t result;
     

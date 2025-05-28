@@ -18,7 +18,12 @@
 
 static const char *MAIN_TAG = "MAIN";
 
-// Callback for when WiFi connects
+/**
+ * @brief Callback function executed when WiFi connection is established.
+ *
+ * Starts the HTTP server to enable remote control and OTA functionality
+ * once the device has network connectivity.
+ */
 void on_wifi_connected(void) {
     ESP_LOGI(MAIN_TAG, "WiFi connected - starting HTTP server");
     esp_err_t result = http_server_start();
@@ -27,20 +32,38 @@ void on_wifi_connected(void) {
     }
 }
 
+/**
+ * @brief Callback function executed when WiFi connection is lost.
+ *
+ * Stops the HTTP server to prevent access attempts when the device
+ * loses network connectivity.
+ */
 void on_wifi_disconnected(void) {
     ESP_LOGI(MAIN_TAG, "WiFi disconnected - stopping HTTP server");
     http_server_stop();
 }
 
-/************************ Main *************************/
+/**
+ * @brief Main application entry point.
+ *
+ * Initializes all system modules, attempts to connect using saved WiFi
+ * credentials, starts background tasks for BLE configuration and WiFi
+ * credential handling, and sets up the complete light control system.
+ *
+ * Initialization sequence:
+ * 1. Core systems (NVS, firmware info)
+ * 2. Hardware modules (GPIO, BLE, WiFi, OTA, HTTP)
+ * 3. WiFi connection attempt with saved credentials
+ * 4. Background task creation for ongoing operations
+ *
+ * @note This function never returns; the system runs via FreeRTOS tasks.
+ */
 void app_main(void)
 {
     ESP_LOGI(MAIN_TAG, "Starting Light Client Application");
     
-
     // Initialize core systems first
     ESP_ERROR_CHECK(nvs_manager_init());
-    //ESP_ERROR_CHECK(event_handlers_init());
     
     // Get firmware info
     get_firmware_info();    

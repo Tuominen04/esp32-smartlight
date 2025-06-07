@@ -4,11 +4,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "esp_ota_ops.h"
+
+// Only include BLE headers if BLE is enabled
+#ifdef CONFIG_BT_ENABLED
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
 #include "esp_gatt_common_api.h"
-
+#endif
 
 /**
  * @brief Unique device number or instance identifier.
@@ -33,7 +36,9 @@ void device_manager_save_device_info(const char* ssid, const char* password);
  * Builds a JSON payload with device name, ID, IP address, and firmware version,
  * then updates the BLE characteristic and sends a notification if connected.
  */
+#ifdef CONFIG_BT_ENABLED
 void send_device_info_via_ble(void);
+#endif
 
 /**
  * @brief Get information about the currently running firmware.
@@ -46,6 +51,7 @@ void send_device_info_via_ble(void);
  */
 esp_app_desc_t* get_firmware_info(void);
 
+#ifdef CONFIG_BT_ENABLED
 /**
  * @brief Set BLE GATT interface and connection ID.
  *
@@ -69,5 +75,6 @@ void device_info_set_ble_handle(uint16_t handle);
  * @brief Callback type for setting the BLE characteristic handle externally.
  */
 typedef void (*set_device_info_handle_cb_t)(uint16_t handle);
+#endif // CONFIG_BT_ENABLED
 
 #endif // DEVICE_INFO_H

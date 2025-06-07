@@ -30,7 +30,7 @@
 #define MAX_DEVICE_NAME_LEN 32
 
 /** Maximum length for device ID strings including null terminator. */
-#define MAX_DEVICE_ID_LEN 9
+#define MAX_DEVICE_ID_LEN 32
 
 /** Index of the main application profile in the profile table. */
 #define PROFILE_APP_IDX 0
@@ -106,4 +106,3 @@
 #define APP_ERR_BLE_NOT_INITIALIZED 0x1003
 
 #endif // COMMON_DEFS_H
-

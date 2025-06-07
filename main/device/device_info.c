@@ -11,10 +11,14 @@
 #include "cJSON.h"
 
 // Include BLE headers that needed
+#ifdef CONFIG_BT_ENABLED
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
 #include "esp_gatt_common_api.h"
+#else // BLE is not enabled - using mock implementations
+#warning "BLE is not enabled - using mock BLE functions for testing"
+#endif // CONFIG_BT_ENABLED
 
 // Other moduls
 #include "../storage/nvs_manager.h"
@@ -55,28 +59,35 @@ static bool load_device_info(char* out_device_name, size_t name_buf_size, char* 
 }
 
 /**
- * @brief Set BLE GATT interface and connection ID.
+ * @brief Get information about the currently running firmware.
  *
- * Called by the BLE module upon device connection to set up the necessary BLE context.
+ * Returns a dynamically allocated structure containing metadata such as
+ * firmware version, project name, and compile time.
  *
- * @param gatts_if   BLE GATT interface.
- * @param conn_id    BLE connection ID.
+ * @return Pointer to an `esp_app_desc_t` structure, or NULL on failure.
+ *         Caller is responsible for freeing the memory.
  */
-void device_info_set_ble_info(esp_gatt_if_t gatts_if, uint16_t conn_id) {
-    ble_gatts_if = gatts_if;
-    ble_conn_id = conn_id;
+esp_app_desc_t* get_firmware_info(void) {
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_app_desc_t *app_desc = malloc(sizeof(esp_app_desc_t));
+    
+    if (app_desc == NULL) {
+        ESP_LOGE(FIRMWARE_TAG, "Failed to allocate memory for app_desc");
+        return NULL;
+    }
+    
+    if (esp_ota_get_partition_description(running, app_desc) == ESP_OK) {
+        ESP_LOGI(FIRMWARE_TAG, "Running firmware version: %s", app_desc->version);
+        ESP_LOGI(FIRMWARE_TAG, "Running partition: %s", running->label);
+
+        return app_desc;
+    } else {
+        ESP_LOGE(FIRMWARE_TAG, "Failed to get partition description");
+        free(app_desc);
+        return NULL;
+    }
 }
 
-/**
- * @brief Set the BLE characteristic handle used to send device information.
- *
- * Called by the BLE module after the characteristic is created.
- *
- * @param handle  BLE GATT characteristic handle.
- */
-void device_info_set_ble_handle(uint16_t handle) {
-    device_info_char_handle = handle;
-}
 
 /**
  * @brief Save device information and WiFi credentials to NVS.
@@ -88,6 +99,16 @@ void device_info_set_ble_handle(uint16_t handle) {
  * @param password  WiFi password to save.
  */
 void device_manager_save_device_info(const char* ssid, const char* password) {
+    if (!ssid || !password) {
+        ESP_LOGE(DEVICE_TAG, "Invalid parameters: ssid=%p, password=%p", ssid, password);
+        return;
+    }
+    
+    if (strlen(ssid) == 0 || strlen(password) == 0) {
+        ESP_LOGE(DEVICE_TAG, "Empty SSID or password not allowed");
+        return;
+    }
+   
     // Check if already saved
     char existing_name[32] = {0};
     char existing_id[9] = {0};
@@ -109,7 +130,12 @@ void device_manager_save_device_info(const char* ssid, const char* password) {
 
     // Save device ID (using MAC address last 4 bytes)
     uint8_t mac[6];
-    esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+    esp_err_t mac_err = esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+    if (mac_err != ESP_OK) {
+    ESP_LOGE(DEVICE_TAG, "Failed to get MAC address: %s", esp_err_to_name(mac_err));
+        return;
+    }
+    
     char device_id[9];
     sprintf(device_id, "%02X%02X%02X%02X", mac[2], mac[3], mac[4], mac[5]);
     
@@ -127,6 +153,7 @@ void device_manager_save_device_info(const char* ssid, const char* password) {
     }
 }
 
+#ifdef CONFIG_BT_ENABLED
 /**
  * @brief Send device information to the mobile app via BLE.
  *
@@ -162,6 +189,7 @@ void send_device_info_via_ble(void) {
     load_device_info(device_name, sizeof(device_name), device_id, sizeof(device_id));
     sprintf(device_ip_str, IPSTR, IP2STR(&ip_info.ip));
 
+    
     esp_app_desc_t *app_desc = get_firmware_info();
     if (app_desc != NULL) {
         strncpy(device_version, app_desc->version, sizeof(device_version) - 1);
@@ -201,31 +229,44 @@ void send_device_info_via_ble(void) {
 }
 
 /**
- * @brief Get information about the currently running firmware.
+ * @brief Set BLE GATT interface and connection ID.
  *
- * Returns a dynamically allocated structure containing metadata such as
- * firmware version, project name, and compile time.
+ * Called by the BLE module upon device connection to set up the necessary BLE context.
  *
- * @return Pointer to an `esp_app_desc_t` structure, or NULL on failure.
- *         Caller is responsible for freeing the memory.
+ * @param gatts_if   BLE GATT interface.
+ * @param conn_id    BLE connection ID.
  */
-esp_app_desc_t* get_firmware_info(void) {
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    esp_app_desc_t *app_desc = malloc(sizeof(esp_app_desc_t));
-    
-    if (app_desc == NULL) {
-        ESP_LOGE(FIRMWARE_TAG, "Failed to allocate memory for app_desc");
-        return NULL;
-    }
-    
-    if (esp_ota_get_partition_description(running, app_desc) == ESP_OK) {
-        ESP_LOGI(FIRMWARE_TAG, "Running firmware version: %s", app_desc->version);
-        ESP_LOGI(FIRMWARE_TAG, "Running partition: %s", running->label);
-
-        return app_desc;
-    } else {
-        ESP_LOGE(FIRMWARE_TAG, "Failed to get partition description");
-        free(app_desc);
-        return NULL;
-    }
+void device_info_set_ble_info(esp_gatt_if_t gatts_if, uint16_t conn_id) {
+    ble_gatts_if = gatts_if;
+    ble_conn_id = conn_id;
 }
+
+/**
+ * @brief Set the BLE characteristic handle used to send device information.
+ *
+ * Called by the BLE module after the characteristic is created.
+ *
+ * @param handle  BLE GATT characteristic handle.
+ */
+void device_info_set_ble_handle(uint16_t handle) {
+    device_info_char_handle = handle;
+}
+#else // CONFIG_BT_ENABLED is not defined
+// Mock implementations when BLE is not enabled
+static const char* MOCK_TAG = "DEVICE_INFO_MOCK";
+
+void send_device_info_via_ble(void)
+{
+    ESP_LOGI(MOCK_TAG, "Mock: Sending device info via BLE");
+}
+
+void device_info_set_ble_info(esp_gatt_if_t gatts_if, uint16_t conn_id)
+{
+    ESP_LOGI(MOCK_TAG, "Mock: Setting BLE info (gatts_if=%d, conn_id=%d)", gatts_if, conn_id);
+}
+
+void device_info_set_ble_handle(uint16_t handle)
+{
+    ESP_LOGI(MOCK_TAG, "Mock: Setting BLE handle: %d", handle);
+}
+#endif

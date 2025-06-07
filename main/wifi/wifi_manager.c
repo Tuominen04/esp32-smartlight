@@ -209,31 +209,63 @@ esp_err_t wifi_manager_init(void)
         return ESP_FAIL;
     }
 
-    // Initialize network interface
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
+    // Initialize network interface (only if not already done)
+    esp_err_t ret = esp_netif_init();
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(WIFI_TAG, "Failed to initialize netif: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Create default event loop (only if not already created)
+    ret = esp_event_loop_create_default();
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(WIFI_TAG, "Failed to create event loop: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    if (sta_netif == NULL) {
+        esp_netif_create_default_wifi_sta();
+    }
 
     // Initialize WiFi
+    // Initialize WiFi
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ret = esp_wifi_init(&cfg);
+    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGE(WIFI_TAG, "Failed to initialize WiFi: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     // Register event handlers
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
     
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                       ESP_EVENT_ANY_ID,
-                                                       &wifi_event_handler,
-                                                       NULL,
-                                                       &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                       IP_EVENT_STA_GOT_IP,
-                                                       &wifi_event_handler,
-                                                       NULL,
-                                                       &instance_got_ip));
+    ret = esp_event_handler_instance_register(WIFI_EVENT,
+                                           ESP_EVENT_ANY_ID,
+                                           &wifi_event_handler,
+                                           NULL,
+                                           &instance_any_id);
+    if (ret != ESP_OK) {
+        ESP_LOGE(WIFI_TAG, "Failed to register WiFi event handler: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ret = esp_event_handler_instance_register(IP_EVENT,
+                                           IP_EVENT_STA_GOT_IP,
+                                           &wifi_event_handler,
+                                           NULL,
+                                           &instance_got_ip);
+    if (ret != ESP_OK) {
+        ESP_LOGE(WIFI_TAG, "Failed to register IP event handler: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ret = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (ret != ESP_OK) {
+        ESP_LOGE(WIFI_TAG, "Failed to set WiFi mode: %s", esp_err_to_name(ret));
+        return ret;
+    }
     
     s_wifi_initialized = true;
     ESP_LOGI(WIFI_TAG, "WiFi manager initialized successfully");
@@ -267,6 +299,11 @@ esp_err_t wifi_manager_disconnect(void)
 {
     if (!s_wifi_initialized) {
         return ESP_FAIL;
+    }
+
+    if (!s_wifi_connected) {
+        ESP_LOGW(WIFI_TAG, "WiFi is not connected, nothing to disconnect");
+        return ESP_OK; // Already disconnected
     }
 
     ESP_LOGI(WIFI_TAG, "Disconnecting from WiFi");
@@ -314,14 +351,16 @@ esp_err_t wifi_manager_get_saved_credentials(char* out_ssid, size_t ssid_buf_siz
  */
 void wifi_manager_set_new_credentials(const char *json_credentials)
 {
-    if (!json_credentials) {
+    if (!json_credentials || json_credentials[0] == '\0') {
         ESP_LOGE(WIFI_TAG, "NULL credentials provided");
+        s_new_wifi_credentials = false;
         return;
     }
 
     size_t len = strlen(json_credentials);
     if (len >= sizeof(s_wifi_credentials_buffer)) {
         ESP_LOGE(WIFI_TAG, "Credentials too long: %d bytes", len);
+        s_new_wifi_credentials = false;
         return;
     }
 

@@ -5,6 +5,10 @@ dependencies.lock
 /.vscode
 /.devcontainer
 
+# tests
+/test/build
+/test_system/build
+
 # own generated files
 gen_*.txt
 *.ps1

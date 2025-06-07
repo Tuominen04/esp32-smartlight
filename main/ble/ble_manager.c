@@ -24,8 +24,8 @@ static const char *BLE_TAG = "BLUETOOTH";
 static const char *GATTS_TAG = "GATTS";
 static const char *GAP_TAG = "GAP";
 
-static bool waiting_confrimation = false;
-static bool confirmation_succesfull = false;
+static bool waiting_confirmation = false;
+static bool confirmation_successful = false;
 
 static char wifi_buffer[256] = {0}; // Temporary buffer for WiFi credentials
 static size_t wifi_buffer_len = 0;  // Actual length of data in wifi_buffer
@@ -242,44 +242,54 @@ static void ble_manager_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_
 static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     switch (event) {
-    case ESP_GATTS_REG_EVT:
-        ESP_LOGI(GATTS_TAG, "REGISTER_APP_EVT, status %d, app_id %d", param->reg.status, param->reg.app_id);
+        case ESP_GATTS_REG_EVT:
+            ESP_LOGI(GATTS_TAG, "REGISTER_APP_EVT, status %d, app_id %d", param->reg.status, param->reg.app_id);
 
-        // Set up the device name
-        esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(DEVICE_NAME);
-        if (set_dev_name_ret) {
-            ESP_LOGE(GATTS_TAG, "Set device name failed, error code = %x", set_dev_name_ret);
-        }
+            // Set up the device name
+            esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(DEVICE_NAME);
+            if (set_dev_name_ret) {
+                ESP_LOGE(GATTS_TAG, "Set device name failed, error code = %x", set_dev_name_ret);
+            }
 
-        // Configure the advertisement data
-        esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
-        if (ret) {
-            ESP_LOGE(GATTS_TAG, "Config adv data failed, error code = %x", ret);
-        }
-        
-        // Configure the scan response data
-        ret = esp_ble_gap_config_adv_data(&scan_rsp_data);
-        if (ret) {
-            ESP_LOGE(GATTS_TAG, "Config scan response data failed, error code = %x", ret);
-        }
+            // Configure the advertisement data
+            esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
+            if (ret) {
+                ESP_LOGE(GATTS_TAG, "Config adv data failed, error code = %x", ret);
+            }
+            
+            // Configure the scan response data
+            ret = esp_ble_gap_config_adv_data(&scan_rsp_data);
+            if (ret) {
+                ESP_LOGE(GATTS_TAG, "Config scan response data failed, error code = %x", ret);
+            }
 
-        // Create the service
-        esp_gatt_srvc_id_t service_id;
-        service_id.id.inst_id = 0x00;
-        service_id.id.uuid.len = ESP_UUID_LEN_128;
-        memcpy(service_id.id.uuid.uuid.uuid128, esp_service_uuid, sizeof(esp_service_uuid));
-        service_id.is_primary = true;
-        
-        esp_ble_gatts_create_service(gatts_if, &service_id, 8); /// Allow more handles for service + char + descriptor
-        break;
+            // Create the service
+            esp_gatt_srvc_id_t service_id;
+            service_id.id.inst_id = 0x00;
+            service_id.id.uuid.len = ESP_UUID_LEN_128;
+            memcpy(service_id.id.uuid.uuid.uuid128, esp_service_uuid, sizeof(esp_service_uuid));
+            service_id.is_primary = true;
+
+            ret = esp_ble_gatts_create_service(gatts_if, &service_id, 8); /// Allow more handles for service + char + descriptor
+            if (ret) 
+            {
+                ESP_LOGE(GATTS_TAG, "Create service failed, error code = %s", esp_err_to_name(ret));
+                return;
+            }
+            break;
         
         case ESP_GATTS_CREATE_EVT:
             ESP_LOGI(GATTS_TAG, "CREATE_SERVICE_EVT, status %d, service_handle %d", param->create.status, param->create.service_handle);
             gl_profile_tab[PROFILE_APP_IDX].service_handle = param->create.service_handle;
             
             // Start the service
-            esp_ble_gatts_start_service(gl_profile_tab[PROFILE_APP_IDX].service_handle);
-            
+            ret = esp_ble_gatts_start_service(gl_profile_tab[PROFILE_APP_IDX].service_handle);
+            if (ret) 
+            {
+                ESP_LOGE(GATTS_TAG, "Create service failed, error code = %s", esp_err_to_name(ret));
+                return;
+            }
+
             // Add the WiFi credentials characteristic
             esp_bt_uuid_t char_uuid;
             char_uuid.len = ESP_UUID_LEN_128;
@@ -441,8 +451,8 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
                             ESP_LOGI(GATTS_TAG, "Received confirmation message: %s", 
                                 success_item->valueint ? "SUCCESS" : "FAILURE");
                             
-                            confirmation_succesfull = (success_item->valueint == 1);
-                            waiting_confrimation = true;
+                            confirmation_successful = (success_item->valueint == 1);
+                            waiting_confirmation = true;
                         } else {
                             // Check if it's WiFi credentials
                             cJSON *ssid_item = cJSON_GetObjectItem(root, "ssid");
@@ -469,7 +479,10 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
                 }
                 
                 // Always send a response
-                esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
+                esp_err_t ret = esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
+                if (ret) {
+                    ESP_LOGE(GATTS_TAG, "Send response failed, error code = %x", ret);
+                }
             } else {
                 ESP_LOGE(GATTS_TAG, "Write buffer overflow, len=%d, buffer size=%d", 
                     wifi_buffer_len + param->write.len, sizeof(wifi_buffer) - 1);
@@ -515,24 +528,24 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
  *
  * Behavior:
  * - Runs in an infinite loop with a 1-second delay per iteration.
- * - If a confirmation is pending (`waiting_confrimation` is true):
- *   - If the confirmation was unsuccessful (`!confirmation_succesfull`):
+ * - If a confirmation is pending (`waiting_confirmation` is true):
+ *   - If the confirmation was unsuccessful (`!confirmation_successful`):
  *     - Deletes stored WiFi credentials from NVS.
  *     - Disconnects from the current WiFi.
  *     - Logs the event and restarts BLE advertising.
  *   - If the confirmation was successful:
  *     - Logs success.
- *   - Resets the `waiting_confrimation` flag to false.
+ *   - Resets the `waiting_confirmation` flag to false.
  *
  * @param arg Unused task parameter.
  */
 void ble_manager_handle_device_info_confirmation(void*)
 {
     while (1) {
-        if (waiting_confrimation) {
+        if (waiting_confirmation) {
             ESP_LOGI(BLE_TAG, "Handeling Confirmation");
 
-            if (!confirmation_succesfull) {
+            if (!confirmation_successful) {
                 esp_err_t err = nvs_manager_delete_wifi_credentials();
                 if (err == ESP_OK) {
                     wifi_manager_disconnect(); // Disconnect from current WiFi
@@ -542,7 +555,7 @@ void ble_manager_handle_device_info_confirmation(void*)
             } else {
                 ESP_LOGI(BLE_TAG, "Mobile application confirmed successful receipt of device info.");
             }
-            waiting_confrimation = false;
+            waiting_confirmation = false;
         }
         vTaskDelay(pdMS_TO_TICKS(1000));
     }

@@ -86,6 +86,16 @@ static esp_err_t nvs_manager_read_write_nvs(nvs_handle_t *out_handle) {
  *      - ESP_ERR_* on NVS access or buffer size errors
  */
 esp_err_t nvs_manager_get_device_info(char* out_device_name, size_t name_buf_size, char* out_device_id, size_t id_buf_size) {
+    if (!out_device_name || !out_device_id) {
+        ESP_LOGE(NVS_TAG, "Invalid output buffers: out_device_name=%p, out_device_id=%p", out_device_name, out_device_id);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if (name_buf_size == 0 || id_buf_size == 0) {
+        ESP_LOGE(NVS_TAG, "Invalid buffer sizes: name_buf_size=%d, id_buf_size=%d", name_buf_size, id_buf_size);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_manager_read_nvs(&nvs_handle);
     if (err != ESP_OK) return err;
@@ -128,6 +138,17 @@ cleanup:
  *      - ESP_ERR_* on NVS access or buffer size errors
  */
 esp_err_t nvs_manager_get_wifi_credentials(char* out_ssid, size_t ssid_buf_size, char* out_password, size_t password_buf_size) {
+    
+    if (!out_ssid || !out_password) {
+        ESP_LOGE(NVS_TAG, "Invalid output buffers: out_ssid=%p, out_password=%p", out_ssid, out_password);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if (ssid_buf_size == 0 || password_buf_size == 0) {
+        ESP_LOGE(NVS_TAG, "Invalid buffer sizes: ssid_buf_size=%d, password_buf_size=%d", ssid_buf_size, password_buf_size);
+        return ESP_ERR_INVALID_ARG;
+    }
+
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_manager_read_nvs(&nvs_handle);
     if (err != ESP_OK) return err;
@@ -171,25 +192,34 @@ esp_err_t nvs_manager_delete_wifi_credentials() {
     esp_err_t err = nvs_manager_read_write_nvs(&nvs_handle);
     if (err != ESP_OK) return err;
 
-    // Delete each key and check for errors
-    err = nvs_set_str(nvs_handle, WIFI_SSID_KEY, NULL);
-    if (err != ESP_OK) goto cleanup;
+    // Use nvs_erase_key instead of nvs_set_str with NULL
+    esp_err_t wifi_ssid_err = nvs_erase_key(nvs_handle, WIFI_SSID_KEY);
+    esp_err_t wifi_pass_err = nvs_erase_key(nvs_handle, WIFI_PASS_KEY);
+    esp_err_t device_name_err = nvs_erase_key(nvs_handle, DEVICE_NAME_KEY);
+    esp_err_t device_id_err = nvs_erase_key(nvs_handle, DEVICE_ID_KEY);
 
-    err = nvs_set_str(nvs_handle, WIFI_PASS_KEY, NULL);
-    if (err != ESP_OK) goto cleanup;
+    // Log individual results (ESP_ERR_NVS_NOT_FOUND is OK - means key didn't exist)
+    if (wifi_ssid_err != ESP_OK && wifi_ssid_err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(NVS_TAG, "Failed to erase WIFI_SSID_KEY: %s", esp_err_to_name(wifi_ssid_err));
+    }
+    if (wifi_pass_err != ESP_OK && wifi_pass_err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(NVS_TAG, "Failed to erase WIFI_PASS_KEY: %s", esp_err_to_name(wifi_pass_err));
+    }
+    if (device_name_err != ESP_OK && device_name_err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(NVS_TAG, "Failed to erase DEVICE_NAME_KEY: %s", esp_err_to_name(device_name_err));
+    }
+    if (device_id_err != ESP_OK && device_id_err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGW(NVS_TAG, "Failed to erase DEVICE_ID_KEY: %s", esp_err_to_name(device_id_err));
+    }
 
-    err = nvs_set_str(nvs_handle, DEVICE_NAME_KEY, NULL);
-    if (err != ESP_OK) goto cleanup;
-
-    err = nvs_set_str(nvs_handle, DEVICE_ID_KEY, NULL);
-    if (err != ESP_OK) goto cleanup;
-
+    // Commit the changes
     err = nvs_commit(nvs_handle);
-    if (err != ESP_OK) goto cleanup;
+    if (err != ESP_OK) {
+        ESP_LOGE(NVS_TAG, "Error committing NVS after delete: %s", esp_err_to_name(err));
+    }
 
-cleanup:
     nvs_close(nvs_handle);
-    return err;
+    return err;  // Return the commit result
 }
 
 /**
@@ -206,6 +236,16 @@ cleanup:
  *      - ESP_ERR_* on NVS write or commit failure
  */
 esp_err_t nvs_manager_save_wifi_credentials(const char* ssid, const char* password) {
+    if (!ssid || !password) {
+        ESP_LOGE(NVS_TAG, "Invalid parameters: ssid=%p, password=%p", ssid, password);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if (strlen(ssid) == 0 || strlen(password) == 0) {
+        ESP_LOGE(NVS_TAG, "Empty SSID or password not allowed");
+        return ESP_ERR_INVALID_ARG;
+    }
+    
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_manager_read_write_nvs(&nvs_handle);
     if (err != ESP_OK) return err;
@@ -240,6 +280,16 @@ cleanup:
  *      - ESP_ERR_* on NVS write or commit failure
  */
 esp_err_t nvs_manager_save_device_info(const char* device_id, const char* device_name) {
+    if (!device_id || !device_name) {
+        ESP_LOGE(NVS_TAG, "Invalid parameters: device_id=%p, device_name=%p", device_id, device_name);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if (strlen(device_id) == 0 || strlen(device_name) == 0) {
+        ESP_LOGE(NVS_TAG, "Empty device_id or device_name not allowed");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     nvs_handle_t nvs_handle;
     esp_err_t err = nvs_manager_read_write_nvs(&nvs_handle);
     if (err != ESP_OK) return err;

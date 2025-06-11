@@ -1,4 +1,3 @@
-# Test component test/test_main/CMakeLists.txt
 idf_component_register(
     SRCS 
         "test_main.c"
@@ -26,10 +25,8 @@ idf_component_register(
         unity
         app_update
         bt
-        # esp_common
         esp_driver_gpio
         esp_event
-        # esp_http_client 
         esp_https_ota
         esp_netif
         esp_timer

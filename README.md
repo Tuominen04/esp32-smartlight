@@ -154,6 +154,20 @@ idf.py monitor
 * ``HTTP_SERVER``: API requests
 * ``OTA``: Update progress and errors
 
+## 📄 Legal Information
+
+### License
+This project is commercially licensed. See [LICENSE](LICENSE) for details.
+
+### Safety Notice
+⚠️ **Important**: Read [DISCLAIMER.md](DISCLAIMER.md) before use. This device controls electrical circuits and requires proper safety precautions.
+
+### Third-Party Components
+This project uses components licensed under various open source licenses. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for complete attribution.
+
+### Commercial Use
+For commercial licensing information, see [SALES_TERMS.md](SALES_TERMS.md) or contact arttutuominen10@gmail.com.
+
 ## 📞 Support
 ### IDF Problems: 
 * Technical Issues: GitHub Issues

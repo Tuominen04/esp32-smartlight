@@ -1,3 +1,16 @@
+/**
+ * @file ble_manager.c
+ * @brief BLE manager implementation for device provisioning
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #include "ble_manager.h"
 #include <string.h>
 #include <stdio.h>

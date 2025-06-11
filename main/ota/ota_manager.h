@@ -1,3 +1,16 @@
+/**
+ * @file ota_manager.h
+ * @brief OTA manager API for firmware updates
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #ifndef OTA_MANAGER_H
 #define OTA_MANAGER_H
 

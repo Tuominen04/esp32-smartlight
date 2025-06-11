@@ -1,6 +1,14 @@
 /**
  * @file test_main.c
  * @brief Unity test runner for ESP-IDF - Manual approach
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
  */
 
 #include <stdio.h>

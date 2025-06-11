@@ -2,6 +2,14 @@
  * @file test_wifi_manager.c
  * @brief Unit tests for WiFi Manager module
  * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ *
  * Note: These tests focus on testing the logic and state management
  * of the WiFi manager without requiring actual WiFi hardware.
  */

@@ -1,3 +1,16 @@
+/**
+ * @file ota_manager.c
+ * @brief OTA manager implementation for firmware updates
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

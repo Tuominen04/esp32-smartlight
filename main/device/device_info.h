@@ -1,3 +1,16 @@
+/**
+ * @file device_info.h
+ * @brief Device information API and BLE interface
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #ifndef DEVICE_INFO_H
 #define DEVICE_INFO_H
 

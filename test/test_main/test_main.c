@@ -4,6 +4,17 @@
  *
  * This file contains the main test application that runs all unit tests
  * for the light controller project.
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ * 
+ * @note file contains the main test application that runs all unit tests
+ * for the light controller project.
  */
 
 #include <stdio.h>

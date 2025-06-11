@@ -1,3 +1,16 @@
+/**
+ * @file http_server.c
+ * @brief HTTP server implementation for light control and OTA
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #include "http_server.h"
 #include <string.h>
 #include <stdio.h>

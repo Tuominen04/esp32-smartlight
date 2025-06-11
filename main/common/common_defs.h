@@ -1,10 +1,16 @@
 /**
  * @file common_defs.h
- * @brief Common definitions and constants used throughout the ESP light client application.
- *
- * This header contains shared configuration values, buffer sizes, task parameters,
- * and application-specific error codes used across multiple modules.
+ * @brief Common definitions and configuration macros
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
  */
+
 #ifndef COMMON_DEFS_H
 #define COMMON_DEFS_H
 

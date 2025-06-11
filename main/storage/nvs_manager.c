@@ -1,3 +1,16 @@
+/**
+ * @file nvs_manager.c
+ * @brief NVS manager implementation for device and WiFi data
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #include "nvs_manager.h"
 #include "nvs_flash.h"
 #include "nvs.h"

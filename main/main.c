@@ -1,3 +1,16 @@
+/**
+ * @file main.c
+ * @brief Main application entry point for ESP32 Light Client
+ * 
+ * Copyright (c) 2025 Arttu Tuominen. All rights reserved.
+ * 
+ * This software is licensed under commercial terms.
+ * See LICENSE file for complete license terms.
+ * 
+ * NOTICE: This file contains proprietary information. Unauthorized 
+ * distribution or use is strictly prohibited.
+ */
+
 #include <string.h>
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"

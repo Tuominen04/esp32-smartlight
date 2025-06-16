@@ -6,9 +6,9 @@ dependencies.lock
 /.devcontainer
 
 # tests
-/test/build
+/test/**/build
 /test_system/build
 
 # own generated files
 gen_*.txt
-*.ps1
+/*.ps1

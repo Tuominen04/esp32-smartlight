@@ -18,7 +18,7 @@
 #include <string.h>
 
 // other modules
-#include "../common/common_defs.h"
+#include "common_defs.h"
 
 static const char *NVS_TAG = "NVS_MANAGER";
 

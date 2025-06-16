@@ -1,24 +1,24 @@
-# Main component main/CMakeLists.txt
 idf_component_register(
     SRCS
         "main.c"
-        "ble/ble_manager.c" 
-        "device/device_info.c"
-        "gpio/gpio_control.c"
-        "http/http_server.c"
-        "ota/ota_manager.c"
-        "storage/nvs_manager.c"
-        "wifi/wifi_manager.c"
+        "../components/ble/ble_manager.c" 
+        "../components/gpio/gpio_control.c"
+        "../components/http/http_server.c"
+        "../components/ota/ota_manager.c"
+        "../components/storage/nvs_manager.c"
+        "../components/system_info/device_info.c"
+        "../components/wifi/wifi_manager.c"
     INCLUDE_DIRS
         "."
-        "ble"
-        "device"
-        "common"
-        "gpio"
-        "http" 
-        "ota"
-        "storage"
-        "wifi"
+        "../components"
+        "../components/ble"
+        "../components/common"
+        "../components/gpio"
+        "../components/http" 
+        "../components/ota"
+        "../components/storage"
+        "../components/system_info"
+        "../components/wifi"
     REQUIRES 
         esp_wifi 
         nvs_flash

@@ -600,8 +600,6 @@ esp_err_t ota_manager_ota_update_handler(httpd_req_t *req)
  */
 esp_err_t ota_manager_progress_handler(httpd_req_t *req)
 {
-    ESP_LOGI(OTA_PROGRESS_TAG, "Received OTA progress request");
-    
     // Rate limiting for progress requests
     int64_t now = esp_timer_get_time() / 1000; // Get current time in milliseconds
     if (ota_in_progress && now - last_progress_request < 500) { // 500ms minimum between requests during OTA

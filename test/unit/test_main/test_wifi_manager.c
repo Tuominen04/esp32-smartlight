@@ -19,9 +19,9 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "cJSON.h"
-#include "wifi/wifi_manager.h"
-#include "storage/nvs_manager.h"
-#include "common/common_defs.h"
+#include "wifi_manager.h"
+#include "nvs_manager.h"
+#include "common_defs.h"
 
 static const char* TEST_TAG = "TEST_WIFI";
 

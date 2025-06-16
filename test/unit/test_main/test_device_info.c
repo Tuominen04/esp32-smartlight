@@ -17,9 +17,9 @@
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_app_format.h"
-#include "device/device_info.h"
-#include "storage/nvs_manager.h"
-#include "common/common_defs.h"
+#include "device_info.h"
+#include "nvs_manager.h"
+#include "common_defs.h"
 
 static const char* TEST_TAG = "TEST_DEVICE";
 

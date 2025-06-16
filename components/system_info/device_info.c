@@ -34,7 +34,7 @@
 #endif // CONFIG_BT_ENABLED
 
 // Other moduls
-#include "../storage/nvs_manager.h"
+#include "nvs_manager.h"
 
 static const char *DEVICE_TAG = "DEVICE_HANDLING";
 static const char *FIRMWARE_TAG = "FIRMWARE";

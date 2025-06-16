@@ -39,7 +39,7 @@ Prerequisites
 
 * ESP-IDF v5.0+ installed and configured
 * ESP32 development board
-* LED connected to GPIO 23 (configurable in `gpio/gpio_control.h`)
+* LED connected to GPIO 23 (configurable in `gpio_control.h`)
 * Mobile device with BLE capability
 
 Hardware Setup

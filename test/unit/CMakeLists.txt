@@ -1,4 +1,3 @@
-# Project CMakeLists.txt for unit tests
 cmake_minimum_required(VERSION 3.16)
 
 # Include unit-test-app components to get Unity framework

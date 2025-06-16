@@ -28,10 +28,12 @@
 #include "freertos/task.h"
 
 // Include other modules
-#include "../device/device_info.h"
-#include "../wifi/wifi_manager.h"
-#include "../common/common_defs.h"
-#include "../storage/nvs_manager.h"
+#include "device_info.h"
+#include "wifi_manager.h"
+#include "common_defs.h"
+#include "nvs_manager.h"
+
+#include "sdkconfig.h"  // This gives access to all CONFIG_ values
 
 static const char *BLE_TAG = "BLUETOOTH";
 static const char *GATTS_TAG = "GATTS";

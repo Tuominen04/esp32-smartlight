@@ -6,21 +6,22 @@ idf_component_register(
         "test_gpio_control.c"
         "test_device_info.c"
         # Add only the source files we need for testing, not the full main
-        "../../main/storage/nvs_manager.c"
-        "../../main/gpio/gpio_control.c"
-        "../../main/device/device_info.c"
-        "../../main/wifi/wifi_manager.c"
+        "../../../components/gpio/gpio_control.c"
+        "../../../components/storage/nvs_manager.c"
+        "../../../components/system_info/device_info.c"
+        "../../../components/wifi/wifi_manager.c"
 
     INCLUDE_DIRS 
         "."
-        "../../main"
-        "../../main/storage"
-        "../../main/wifi"
-        "../../main/gpio"
-        "../../main/device"
-        "../../main/common"
-        "../../main/http"
-        "../../main/ota"
+        "../../../components"
+        "../../../components/common"
+        "../../../components/gpio"
+        "../../../components/http"
+        "../../../components/ota"
+        "../../../components/storage"
+        "../../../components/system_info"
+        "../../../components/wifi"
+
     REQUIRES 
         unity
         app_update

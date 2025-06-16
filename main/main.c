@@ -20,14 +20,14 @@
 #include "nvs_flash.h"
 
 // Module includes
-#include "gpio/gpio_control.h"
-#include "device/device_info.h"
-#include "wifi/wifi_manager.h"
-#include "ble/ble_manager.h"
-#include "ota/ota_manager.h"
-#include "http/http_server.h"
-#include "storage/nvs_manager.h"
-#include "common/common_defs.h"
+#include "gpio_control.h"
+#include "device_info.h"
+#include "wifi_manager.h"
+#include "ble_manager.h"
+#include "ota_manager.h"
+#include "http_server.h"
+#include "nvs_manager.h"
+#include "common_defs.h"
 
 static const char *MAIN_TAG = "MAIN";
 

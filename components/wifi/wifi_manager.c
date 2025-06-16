@@ -24,8 +24,8 @@
 #include "freertos/event_groups.h"
 
 // Include device_info for saving credentials
-#include "device/device_info.h"
-#include "storage/nvs_manager.h"
+#include "device_info.h"
+#include "nvs_manager.h"
 
 static const char *WIFI_TAG = "WIFI_MANAGER";
 

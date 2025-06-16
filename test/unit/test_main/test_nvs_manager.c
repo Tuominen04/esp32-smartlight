@@ -16,8 +16,8 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
-#include "storage/nvs_manager.h"
-#include "common/common_defs.h"
+#include "nvs_manager.h"
+#include "common_defs.h"
 
 static const char* TEST_TAG = "TEST_NVS";
 

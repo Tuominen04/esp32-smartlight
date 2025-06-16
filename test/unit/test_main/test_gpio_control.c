@@ -15,7 +15,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "driver/gpio.h"
-#include "gpio/gpio_control.h"
+#include "gpio_control.h"
 
 static const char* TEST_TAG = "TEST_GPIO";
 

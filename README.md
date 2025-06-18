@@ -7,13 +7,12 @@ A comprehensive IoT light controller built on ESP-IDF that combines BLE setup, W
 
 ## 🌟 Features
 
-BLE Configuration: Easy WiFi setup via Bluetooth Low Energy
-Remote Control: HTTP REST API for light control
-OTA Updates: Over-the-air firmware updates via HTTP
-Persistent Storage: WiFi credentials and device info stored in NVS
-Mobile App Ready: JSON-based communication for mobile integration
-Robust Architecture: Modular design with proper error handling
-
+- BLE Configuration: Easy WiFi setup via Bluetooth Low Energy
+- Remote Control: HTTP REST API for light control
+- OTA Updates: Over-the-air firmware updates via HTTP
+- Persistent Storage: WiFi credentials and device info stored in NVS
+- Mobile App Ready: JSON-based communication for mobile integration
+- Robust Architecture: Modular design with proper error handling
 ## 🏗️ System Architecture
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -83,36 +82,71 @@ Select the instructions depending on Espressif chip installed on your developmen
 
 ## 📁 Project Structure
 
-```
+```bash
 esp-idf-light-controller/
-├── main/
-│   ├── ble/                 # BLE management and GATT server
+├── components/
+│   ├── ble/                # BLE management
 │   │   ├── ble_manager.c
-│   │   └── ble_manager.h
-│   ├── common/              # Shared definitions and constants
+│   │   ├── ble_manager.h
+│   │   └── README_BLE.md
+│   ├── common/             # Shared definitions
 │   │   └── common_defs.h
-│   ├── device/              # Device info and identification
-│   │   ├── device_info.c
-│   │   └── device_info.h
-│   ├── gpio/                # Hardware control (LED)
+│   ├── gpio/               # GPIO and LED control
 │   │   ├── gpio_control.c
 │   │   └── gpio_control.h
-│   ├── http/                # REST API server
+│   ├── http/               # REST API server
 │   │   ├── http_server.c
-│   │   └── http_server.h
-│   ├── ota/                 # Over-the-air updates
+│   │   ├── http_server.h
+│   │   └── README_HTTP.md
+│   ├── ota/                # OTA update manager
 │   │   ├── ota_manager.c
-│   │   └── ota_manager.h
-│   ├── storage/             # NVS (non-volatile storage)
+│   │   ├── ota_manager.h
+│   │   └── README_OTA.md
+│   ├── storage/            # NVS storage manager
 │   │   ├── nvs_manager.c
 │   │   └── nvs_manager.h
-│   ├── wifi/                # WiFi connection management
-│   │   ├── wifi_manager.c
-│   │   └── wifi_manager.h
-│   ├── main.c               # Application entry point
+│   ├── system_info/        # Device info
+│   │   ├── device_info.c
+│   │   └── device_info.h
+│   └── wifi/               # WiFi connection
+│       ├── wifi_manager.c
+│       └── wifi_manager.h
+├── licenses/               # Legal and licensing documents
+│   ├── all_licenses.txt
+│   ├── COPYRIGHT
+│   ├── DISCLAIMER.md
+│   ├── EULA.md
+│   ├── EXPORT_NOTICE.md
+│   ├── LICENSE
+│   ├── PRIVACY.md
+│   ├── REFUND_POLICY.md
+│   ├── SALES_TERMS.md
+│   ├── SUPPORT_POLICY.md
+│   └── THIRD_PARTY_LICENSES.md
+├── main/                   # Entry point
+│   ├── main.c
 │   └── CMakeLists.txt
+├── build_scripts/          # Build instructions
+│   └── README_BUILD.md
+├── test/                   # Unit and system tests
+│   ├── system/
+│   │   ├── test_main/
+│   │   │   ├── CMakeList.txt
+│   │   │   ├── test_main.c
+│   │   │   └── test_system.c
+│   │   └── CMakeList.txt
+│   └── unit/
+│       ├── test_main/
+│       │   ├── CMakeList.txt
+│       │   ├── test_device_info.c
+│       │   ├── test_gpio_control.c
+│       │   ├── test_main.c
+│       │   ├── test_nvs_manager.c
+│       │   └── test_wifi_manager.c
+│       └── CMakeList.txt
 ├── CMakeLists.txt
-└── README.md             *This is the file you are currently reading
+├── sdkconfig.default
+└── README.md
 ```
 
 For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
@@ -120,60 +154,62 @@ For more information on structure and contents of ESP-IDF projects, please refer
 ## 🐛 Troubleshooting
 ### Common Issues
 #### BLE Connection Problems
+- Ensure device is advertising (check logs)
+- Verify BLE is enabled on mobile device
+- Clear BLE cache if necessary
 
-* Ensure device is advertising (check logs for "Advertising started")
-* Verify BLE is enabled on your mobile device
-* Clear BLE cache on mobile device if connection fails
+#### WiFi Issues
+- Check credentials
+- Ensure 2.4GHz band
+- Review logs for errors
 
-#### WiFi Connection Issues
+#### HTTP Server Inaccessibility
+- Confirm IP address
+- Same network between device and client
+- Firewall settings
 
-* Check WiFi credentials are correct
-* Verify network is 2.4GHz (most ESP32 don't support 5GHz)
-* Monitor logs for specific error codes
-
-#### HTTP Server Not Accessible
-
-* Confirm device obtained IP address (check logs)
-* Verify device and client are on same network
-* Check firewall settings
-
-#### OTA Update Problems
-
-* Ensure firmware URL is accessible from device
-* Verify sufficient flash space for update
-* Check firmware is compatible with current chip
+#### OTA Update Failures
+- Firmware URL must be accessible
+- Check flash size and compatibility
 
 #### Log Analysis
 Monitor serial output for detailed error information:
 ```bash
 idf.py monitor
 ```
-#### Key log tags to watch:
-* ``BLUETOOTH``: BLE operations
-* ``WIFI_MANAGER``: WiFi connection status
-* ``HTTP_SERVER``: API requests
-* ``OTA``: Update progress and errors
+Key tags: ``BLUETOOTH``, ``WIFI_MANAGER``, ``HTTP_SERVER``, ``OTA``
 
 ## 📄 Legal Information
 
 ### License
-This project is commercially licensed. See [LICENSE](LICENSE) for details.
+This project is commercially licensed. See [LICENSE](licenses/LICENSE) for full terms.
 
-### Safety Notice
-⚠️ **Important**: Read [DISCLAIMER.md](DISCLAIMER.md) before use. This device controls electrical circuits and requires proper safety precautions.
+### End User License Agreement
+See [EULA.md](licenses/EULA.md) for permitted uses, restrictions, and license tiers.
 
-### Third-Party Components
-This project uses components licensed under various open source licenses. See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for complete attribution.
+### Safety Disclaimer
+
+**Important:** Read [DISCLAIMER.md](licenses/DISCLAIMER.md) before use. This product interacts with electrical circuits.
+
+### Copyright
+See [COPYRIGHT](licenses/COPYRIGHT) for ownership and rights.
+
+### Third-Party Licenses
+Open-source components listed in [THIRD_PARTY_LICENSES.md](licenses/THIRD_PARTY_LICENSES.md).
+
+### Privacy
+Data handling and user rights described in [PRIVACY.md](licenses/PRIVACY.md).
+
+### Sales Terms
+See [SALES_TERMS.md](licenses/SALES_TERMS.md) for pricing, support, and refund policy.
+
+### Export Notice
+See [EXPORT_NOTICE.md](licenses/EXPORT_NOTICE.md.md) for restrictions on distribution.
 
 ### Commercial Use
-For commercial licensing information, see [SALES_TERMS.md](SALES_TERMS.md) or contact arttutuominen10@gmail.com.
+For commercial licensing information, see  or contact arttutuominen10@gmail.com.
 
-## 📞 Support
-### IDF Problems: 
-* Technical Issues: GitHub Issues
-* ESP-IDF Documentation: Espressif Docs
-* Community Forum: esp32.com
-
-### Project specific problems:
-
-Project Source: [GitHub Issues](https://github.com/Tuominen04/esp-idf-light-example/issues)
+## Support
+- GitHub Issues for bugs: [Project Issues](https://github.com/Tuominen04/esp-idf-light-example/issues)
+- Email: arttutuominen10@gmail.com
+- ESP-IDF docs and forums: esp32.com

@@ -112,7 +112,6 @@ esp-idf-light-controller/
 │       ├── wifi_manager.c
 │       └── wifi_manager.h
 ├── licenses/               # Legal and licensing documents
-│   ├── all_licenses.txt
 │   ├── COPYRIGHT
 │   ├── DISCLAIMER.md
 │   ├── EULA.md

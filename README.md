@@ -203,7 +203,7 @@ Data handling and user rights described in [PRIVACY.md](licenses/PRIVACY.md).
 See [SALES_TERMS.md](licenses/SALES_TERMS.md) for pricing, support, and refund policy.
 
 ### Export Notice
-See [EXPORT_NOTICE.md](licenses/EXPORT_NOTICE.md.md) for restrictions on distribution.
+See [EXPORT_NOTICE.md](licenses/EXPORT_NOTICE.md) for restrictions on distribution.
 
 ### Commercial Use
 For commercial licensing information, see  or contact arttutuominen10@gmail.com.

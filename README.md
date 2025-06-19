@@ -181,7 +181,7 @@ Key tags: ``BLUETOOTH``, ``WIFI_MANAGER``, ``HTTP_SERVER``, ``OTA``
 ## 📄 Legal Information
 
 ### License
-This project is commercially licensed. See [LICENSE](/LICENSE) for full terms.
+This project is commercially licensed. See [LICENSE.md](/LICENSE.md) for full terms.
 
 ### End User License Agreement
 See [EULA.md](licenses/EULA.md) for permitted uses, restrictions, and license tiers.

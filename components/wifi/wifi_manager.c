@@ -116,6 +116,7 @@ static esp_err_t wifi_manager_connect(const char *ssid, const char *password)
     // Set configuration and start
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &s_wifi_config));
     
+    vTaskDelay(pdMS_TO_TICKS(2000));
     esp_err_t err = esp_wifi_start();
     if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STOPPED) {
         ESP_LOGE(WIFI_TAG, "Failed to start WiFi: %s", esp_err_to_name(err));
@@ -123,6 +124,7 @@ static esp_err_t wifi_manager_connect(const char *ssid, const char *password)
     }
 
     // Connect
+    vTaskDelay(pdMS_TO_TICKS(1000));
     err = esp_wifi_connect();
     if (err != ESP_OK) {
         ESP_LOGE(WIFI_TAG, "Failed to connect to WiFi: %s", esp_err_to_name(err));
@@ -169,6 +171,26 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
                     if (s_disconnected_callback) {
                         s_disconnected_callback();
                     }
+                }
+                break;
+            }
+            case IP_EVENT_STA_GOT_IP: {
+                ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+                ESP_LOGI(WIFI_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+                
+                s_retry_num = 0;
+                s_wifi_connected = true;
+                xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+                
+                if (s_connected_callback) {
+                    s_connected_callback();
+                }
+
+                if (!s_new_wifi_credentials) {
+                    ESP_LOGI(WIFI_TAG, "Connected with saved credentials, sending device info via BLE after delay");
+                    // Add a delay to ensure mobile app is ready to receive notifications
+                    vTaskDelay(pdMS_TO_TICKS(3000)); // Wait 3 seconds
+                    send_device_info_via_ble();
                 }
                 break;
             }

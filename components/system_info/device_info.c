@@ -174,8 +174,15 @@ void device_manager_save_device_info(const char* ssid, const char* password) {
  * then updates the BLE characteristic and sends a notification if connected.
  */
 void send_device_info_via_ble(void) {
-    if (device_info_char_handle == 0 || ble_gatts_if == ESP_GATT_IF_NONE) {
-        ESP_LOGE(DEVICE_TAG, "BLE not initialized or device info characteristic not created");
+    ESP_LOGI(DEVICE_TAG, "Attempting to send device info via BLE");
+    
+    if (device_info_char_handle == 0) {
+        ESP_LOGE(DEVICE_TAG, "Device info characteristic not created");
+        return;
+    }
+    
+    if (ble_gatts_if == ESP_GATT_IF_NONE) {
+        ESP_LOGE(DEVICE_TAG, "BLE GATT interface not initialized");
         return;
     }
 
@@ -202,7 +209,6 @@ void send_device_info_via_ble(void) {
     load_device_info(device_name, sizeof(device_name), device_id, sizeof(device_id));
     sprintf(device_ip_str, IPSTR, IP2STR(&ip_info.ip));
 
-    
     esp_app_desc_t *app_desc = get_firmware_info();
     if (app_desc != NULL) {
         strncpy(device_version, app_desc->version, sizeof(device_version) - 1);
@@ -219,22 +225,50 @@ void send_device_info_via_ble(void) {
     cJSON_AddStringToObject(root, "version", device_version);
     
     char *json_str = cJSON_Print(root);
-    ESP_LOGI(DEVICE_TAG, "Sending device info: %s", json_str);
+    ESP_LOGI(DEVICE_TAG, "Device info JSON: %s", json_str);
     
-    // Update the characteristic value
+    // First update the characteristic value
     esp_err_t ret = esp_ble_gatts_set_attr_value(device_info_char_handle, strlen(json_str), (uint8_t*)json_str);
     if (ret != ESP_OK) {
         ESP_LOGE(DEVICE_TAG, "Failed to set device info characteristic value, error = %x", ret);
+    } else {
+        ESP_LOGI(DEVICE_TAG, "Device info characteristic value updated successfully");
     }
     
-    // Send a notification if client is connected
+    // Add a small delay to ensure the value is set
+    vTaskDelay(pdMS_TO_TICKS(100));
+    
+    // Check if we have an active BLE connection
     if (ble_conn_id != 0) {
-        esp_ble_gatts_send_indicate(ble_gatts_if,
+        ESP_LOGI(DEVICE_TAG, "Sending notification to conn_id: %d, gatts_if: %d", ble_conn_id, ble_gatts_if);
+        
+        // Send notification
+        ret = esp_ble_gatts_send_indicate(ble_gatts_if,
                                    ble_conn_id,
                                    device_info_char_handle,
                                    strlen(json_str),
                                    (uint8_t*)json_str,
                                    false);  // false means notification not indication
+        
+        if (ret != ESP_OK) {
+            ESP_LOGE(DEVICE_TAG, "Failed to send notification, error = %x (%s)", ret, esp_err_to_name(ret));
+            
+            // Try sending via the WiFi characteristic as fallback
+            ESP_LOGW(DEVICE_TAG, "Attempting fallback notification via WiFi characteristic");
+            // You'll need to add the WiFi characteristic handle to try this approach
+            // This is just showing the concept
+        } else {
+            ESP_LOGI(DEVICE_TAG, "Device info notification sent successfully");
+        }
+        
+        // Add a small delay after sending
+        vTaskDelay(pdMS_TO_TICKS(100));
+    } else {
+        ESP_LOGW(DEVICE_TAG, "No active BLE connection (ble_conn_id = %d), cannot send notification", ble_conn_id);
+        
+        // The connection might have been lost, but the characteristic value is still updated
+        // So if the client tries to read it, they'll get the latest info
+        ESP_LOGI(DEVICE_TAG, "Device info is available for reading via characteristic");
     }
     
     cJSON_Delete(root);

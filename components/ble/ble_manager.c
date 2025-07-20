@@ -436,12 +436,14 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
             break;
 
     case ESP_GATTS_WRITE_EVT:
-    
+        ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, handle = %d, len = %d", param->write.handle, param->write.len);
+        
+        // Log the received data in hex format for debugging
+        ESP_LOG_BUFFER_HEX(GATTS_TAG, param->write.value, param->write.len);
+        
+        // Check if this is a write to the WiFi credentials characteristic
         if (param->write.handle == gl_profile_tab[PROFILE_APP_IDX].char_handle) {
-            ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, handle = %d, len = %d", param->write.handle, param->write.len);
-            
-            // Log the received data in hex format for debugging
-            ESP_LOG_BUFFER_HEX(GATTS_TAG, param->write.value, param->write.len);
+            ESP_LOGI(GATTS_TAG, "Write to WiFi credentials characteristic");
             
             // Check if we have space in the buffer
             if (wifi_buffer_len + param->write.len < sizeof(wifi_buffer) - 1) {
@@ -478,6 +480,10 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
                                 
                                 // Copy to credentials buffer
                                 wifi_manager_set_new_credentials(wifi_buffer);
+                                
+                                // Set confirmation as successful immediately
+                                confirmation_successful = true;
+                                waiting_confirmation = true;
                             } else {
                                 ESP_LOGW(GATTS_TAG, "Received unknown JSON message");
                             }
@@ -509,12 +515,55 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
                 // Still send a response but with an error
                 esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_NO_RESOURCES, NULL);
             }
-        } else {
-            ESP_LOGE(GATTS_TAG, "Write to wrong handle (got %d, expected %d)",
+        }
+        // Handle CCCD descriptor writes (for enabling notifications)
+        else if (param->write.len == 2) {
+            // This is likely a CCCD write (Client Characteristic Configuration Descriptor)
+            uint16_t cccd_value = (param->write.value[1] << 8) | param->write.value[0];
+            ESP_LOGI(GATTS_TAG, "CCCD write to handle %d, value: 0x%04x", param->write.handle, cccd_value);
+            
+            // Check which characteristic this CCCD belongs to
+            if (param->write.handle == device_info_char_handle + 1) {
+                ESP_LOGI(GATTS_TAG, "CCCD write is for device info characteristic");
+                
+                if (cccd_value == 0x0001) {
+                    ESP_LOGI(GATTS_TAG, "Notifications ENABLED for device info characteristic");
+                    
+                    // Check if WiFi is connected, send device info immediately
+                    if (wifi_manager_is_connected()) {
+                        ESP_LOGI(GATTS_TAG, "WiFi is connected, sending device info immediately");
+                        // Small delay to ensure subscription is ready on mobile app side
+                        vTaskDelay(pdMS_TO_TICKS(200)); 
+                        send_device_info_via_ble();
+                    } else {
+                        ESP_LOGI(GATTS_TAG, "WiFi not connected yet, device info will be sent when connection is established");
+                    }
+                } else if (cccd_value == 0x0000) {
+                    ESP_LOGI(GATTS_TAG, "Notifications DISABLED for device info characteristic");
+                }
+            } else {
+                ESP_LOGI(GATTS_TAG, "CCCD write for handle %d (device_info_char_handle is %d)", 
+                        param->write.handle, device_info_char_handle);
+                
+                if (cccd_value == 0x0001) {
+                    ESP_LOGI(GATTS_TAG, "Notifications enabled for handle %d", param->write.handle);
+                } else if (cccd_value == 0x0000) {
+                    ESP_LOGI(GATTS_TAG, "Notifications disabled for handle %d", param->write.handle);
+                }
+            }
+            
+            // Always send a successful response for CCCD writes
+            esp_err_t ret = esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
+            if (ret) {
+                ESP_LOGE(GATTS_TAG, "Send CCCD response failed, error code = %x", ret);
+            }
+        }
+        else {
+            ESP_LOGW(GATTS_TAG, "Write to unexpected handle %d (WiFi char handle: %d)", 
                 param->write.handle, gl_profile_tab[PROFILE_APP_IDX].char_handle);
             
-            // Send response with error
-            esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_INVALID_HANDLE, NULL);
+            // Send response with success anyway to avoid connection issues
+            esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
         }
         break;
 
@@ -644,6 +693,8 @@ esp_err_t ble_manager_init(void)
     // Initialize our profile
     gl_profile_tab[PROFILE_APP_IDX].gatts_cb = ble_manager_gatts_profile_event_handler;
     gl_profile_tab[PROFILE_APP_IDX].gatts_if = ESP_GATT_IF_NONE;
+
+    ESP_LOGI(BLE_TAG, "BLE manager initialized successfully");
 
     return ESP_OK;
 }

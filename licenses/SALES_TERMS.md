@@ -3,29 +3,18 @@
 ## 💰 Pricing and Payment
 
 ### License Types
-- **Personal License**: $49 - Individual use, non-commercial projects
-- **Commercial License**: $199 - Commercial deployment rights
-- **Source Code License**: $499 - Full source code access with modification rights
-- **Enterprise License**: Contact for pricing - Volume licensing and custom terms
+- **Personal License**: $49 - Full source code access.
 
 ### Payment Terms
-- **Payment Methods**: Credit card, PayPal, bank transfer (enterprise)
-- **Currency**: USD (other currencies available on request)
-- **Invoicing**: Electronic invoices provided within 24 hours
+- **Payment Methods**: Credit card, Google Pay, Apple Pay, Klarna, Link, Bancontact, BLIK, EPS
+- **Currency**: EUR (other currencies available on request)
 
 ## 📦 Delivery and Access
 
 ### Digital Delivery
-- **Immediate Access**: Download links provided within 1 hour of payment
+- **Immediate Access**: Invite linke within 24h
 - **Documentation**: Complete technical documentation included
-- **Support Period**: 12 months of email support included
-- **Updates**: Free updates for 12 months from purchase date
-
-### Enterprise Customers
-- **Custom Packaging**: Available for volume orders
-- **Training**: On-site or remote training available
-- **Integration Support**: Custom integration assistance
-- **Priority Support**: Dedicated support channel
+- **Updates**: Free updates
 
 ## ⚖️ Legal Terms
 
@@ -42,7 +31,6 @@
 ### Limitation of Liability
 - **Maximum Liability**: Limited to amount paid for the license
 - **Excluded Damages**: No liability for indirect or consequential damages
-- **Time Limit**: Claims must be made within 1 year of purchase
 
 ## 🌐 Export Control and Compliance
 
@@ -54,7 +42,7 @@
 ### Data Protection
 - **GDPR Compliance**: European customers covered under GDPR
 - **Data Processing**: Minimal data collection for license management only
-- **Privacy Policy**: Available at [your-website]/privacy
+- **Privacy Policy**: Available at [PRIVACY.md](/licenses/PRIVACY.md)
 
 ## 📞 Contact Information
 - **Email**: arttutuominen10@gmail.com

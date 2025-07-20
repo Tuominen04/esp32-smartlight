@@ -18,7 +18,7 @@ chmod +x build.sh flash.sh
 
 ### 🪟 Windows PowerShell
 ```ps
-cd /path/to/project/esp-idf-light-example
+cd /path/to/project/esp32-smartlight-starter
 ./build_scripts/build.ps1
 ./build_scripts/flash.ps1 -Port COM5
 ```
@@ -26,7 +26,7 @@ cd /path/to/project/esp-idf-light-example
 To build and flash the project using Command Prompt (`cmd.exe`):
 ```cmd
 :: If your project is on the C: drive:
-cd /path/to/project/esp-idf-light-example
+cd /path/to/project/esp32-smartlight-starter
 build_scripts/build.bat
 build_scripts/flash.bat COM5
 ```
@@ -38,7 +38,7 @@ You must switch drives manually before running the script:
 D:
 
 :: Navigate to the project folder
-cd \ESP\ESP-SDK\light_bulb\esp-idf-light-example
+cd \ESP\ESP-SDK\light_bulb\esp32-smartlight-starter
 
 :: Run build and flash scripts
 D:./build_scripts\build.bat

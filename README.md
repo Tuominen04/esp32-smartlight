@@ -1,7 +1,7 @@
 | Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-C5 | ESP32-C6 | ESP32-C61 | ESP32-H2 | ESP32-P4 | ESP32-S2 | ESP32-S3 | Linux |
 | ----------------- | ----- | -------- | -------- | -------- | -------- | --------- | -------- | -------- | -------- | -------- | ----- |
 
-# ESP32 Smart Light Controller
+# ESP32 Smart Light Starter
 
 A comprehensive IoT light controller built on ESP-IDF that combines BLE setup, WiFi connectivity, HTTP control interface, and OTA firmware updates. Perfect for smart home applications and IoT learning projects.
 
@@ -56,7 +56,7 @@ Select the instructions depending on Espressif chip installed on your developmen
 1. Clone and navigate to project
    ```bash
    git clone <repository-url>
-   cd esp-idf-light-controller
+   cd esp32-smartlight-starter
     ```
 
 1. Set up ESP-IDF environment
@@ -83,7 +83,7 @@ Select the instructions depending on Espressif chip installed on your developmen
 ## 📁 Project Structure
 
 ```bash
-esp-idf-light-controller/
+esp32-smartlight-starter/
 ├── components/
 │   ├── ble/                # BLE management
 │   │   ├── ble_manager.c
@@ -209,6 +209,6 @@ See [EXPORT_NOTICE.md](licenses/EXPORT_NOTICE.md) for restrictions on distributi
 For commercial licensing information, see  or contact arttutuominen10@gmail.com.
 
 ## Support
-- GitHub Issues for bugs: [Project Issues](https://github.com/Tuominen04/esp-idf-light-example/issues)
+- GitHub Issues for bugs: [Project Issues](https://github.com/Tuominen04/esp32-smartlight-starter/issues)
 - Email: arttutuominen10@gmail.com
 - ESP-IDF docs and forums: esp32.com

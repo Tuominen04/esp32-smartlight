@@ -40,6 +40,24 @@ static size_t s_stack_size = 8192;
 static int s_max_connections = 3;
 
 /**
+ * @brief HTTP handler for device online status check.
+ *
+ * Handles GET requests to the `/online` endpoint. Responds with HTTP 200 OK and
+ * an empty body to indicate the device is online.
+ *
+ * @param[in] req  HTTP request structure containing client request data.
+ *
+ * @return
+ *      - ESP_OK on successful response transmission
+ */
+static esp_err_t online_get_handler(httpd_req_t *req)
+{
+    ESP_LOGI(HTTP_TAG, "Device online status requested");
+    httpd_resp_send(req, NULL, 0); // No body, just 200 OK
+    return ESP_OK;
+}
+
+/**
  * @brief HTTP handler for light status GET requests.
  *
  * Handles GET requests to the `/light` endpoint, returning the current
@@ -97,6 +115,29 @@ static esp_err_t light_toggle_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, resp, strlen(resp));
     
+    return ESP_OK;
+}
+
+static esp_err_t http_server_register_system_routes(void) 
+{
+    if (s_server == NULL) {
+        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Device online endpoint
+    httpd_uri_t online_uri = {
+        .uri       = "/online",
+        .method    = HTTP_GET,
+        .handler   = online_get_handler,
+        .user_ctx  = NULL
+    };
+    esp_err_t result = httpd_register_uri_handler(s_server, &online_uri);
+    if (result != ESP_OK) {
+        ESP_LOGE(HTTP_TAG, "Failed to register status handler");
+        return result;
+    }
+
     return ESP_OK;
 }
 
@@ -233,6 +274,11 @@ static esp_err_t http_server_register_ota_routes(void)
 static esp_err_t http_server_register_all_routes(void)
 {
     esp_err_t result;
+
+    result = http_server_register_system_routes();
+    if (result != ESP_OK) {
+        return result;
+    }
     
     result = http_server_register_light_routes();
     if (result != ESP_OK) {

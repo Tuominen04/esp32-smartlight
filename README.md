@@ -113,14 +113,6 @@ esp32-smartlight-starter/
 │       └── wifi_manager.h
 ├── licenses/               # Legal and licensing documents
 │   ├── COPYRIGHT
-│   ├── DISCLAIMER.md
-│   ├── EULA.md
-│   ├── EXPORT_NOTICE.md
-│   ├── LICENSE
-│   ├── PRIVACY.md
-│   ├── REFUND_POLICY.md
-│   ├── SALES_TERMS.md
-│   ├── SUPPORT_POLICY.md
 │   └── THIRD_PARTY_LICENSES.md
 ├── main/                   # Entry point
 │   ├── main.c
@@ -183,32 +175,13 @@ Key tags: ``BLUETOOTH``, ``WIFI_MANAGER``, ``HTTP_SERVER``, ``OTA``
 ### License
 This project is commercially licensed. See [LICENSE.md](/LICENSE.md) for full terms.
 
-### End User License Agreement
-See [EULA.md](licenses/EULA.md) for permitted uses, restrictions, and license tiers.
-
-### Safety Disclaimer
-
-**Important:** Read [DISCLAIMER.md](licenses/DISCLAIMER.md) before use. This product interacts with electrical circuits.
-
 ### Copyright
 See [COPYRIGHT](licenses/COPYRIGHT) for ownership and rights.
 
 ### Third-Party Licenses
 Open-source components listed in [THIRD_PARTY_LICENSES.md](licenses/THIRD_PARTY_LICENSES.md).
 
-### Privacy
-Data handling and user rights described in [PRIVACY.md](licenses/PRIVACY.md).
-
-### Sales Terms
-See [SALES_TERMS.md](licenses/SALES_TERMS.md) for pricing, support, and refund policy.
-
-### Export Notice
-See [EXPORT_NOTICE.md](licenses/EXPORT_NOTICE.md) for restrictions on distribution.
-
-### Commercial Use
-For commercial licensing information, see  or contact arttutuominen10@gmail.com.
-
 ## Support
 - GitHub Issues for bugs: [Project Issues](https://github.com/Tuominen04/esp32-smartlight-starter/issues)
 - Email: arttutuominen10@gmail.com
-- ESP-IDF docs and forums: esp32.com
+- ESP-IDF docs and forums: [esp32.com](https://esp32.com/index.php)

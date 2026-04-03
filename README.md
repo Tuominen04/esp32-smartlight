@@ -87,8 +87,7 @@ esp32-smartlight-starter/
 ├── components/
 │   ├── ble/                # BLE management
 │   │   ├── ble_manager.c
-│   │   ├── ble_manager.h
-│   │   └── README_BLE.md
+│   │   └── ble_manager.h
 │   ├── common/             # Shared definitions
 │   │   └── common_defs.h
 │   ├── gpio/               # GPIO and LED control
@@ -96,12 +95,10 @@ esp32-smartlight-starter/
 │   │   └── gpio_control.h
 │   ├── http/               # REST API server
 │   │   ├── http_server.c
-│   │   ├── http_server.h
-│   │   └── README_HTTP.md
+│   │   └──http_server.h
 │   ├── ota/                # OTA update manager
 │   │   ├── ota_manager.c
-│   │   ├── ota_manager.h
-│   │   └── README_OTA.md
+│   │   └── ota_manager.h
 │   ├── storage/            # NVS storage manager
 │   │   ├── nvs_manager.c
 │   │   └── nvs_manager.h
@@ -111,6 +108,9 @@ esp32-smartlight-starter/
 │   └── wifi/               # WiFi connection
 │       ├── wifi_manager.c
 │       └── wifi_manager.h
+├── docs/ 
+│   ├── BLE.md
+│   ...
 ├── licenses/               # Legal and licensing documents
 │   ├── COPYRIGHT
 │   └── THIRD_PARTY_LICENSES.md
@@ -142,7 +142,7 @@ esp32-smartlight-starter/
 
 For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
 
-## 🐛 Troubleshooting
+## Troubleshooting
 ### Common Issues
 #### BLE Connection Problems
 - Ensure device is advertising (check logs)

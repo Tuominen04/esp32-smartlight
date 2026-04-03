@@ -115,8 +115,8 @@ void run_test_with_output(UnityTestFunction test, const char* name, const UNITY_
     fflush(stdout);
 }
 
-// Redefine RUN_TEST to use our custom runner
-#define RUN_TEST(func) run_test_with_output(func, #func, __LINE__)
+// Use a different macro name to avoid conflict with Unity's RUN_TEST
+#define RUN_TEST_CUSTOM(func) run_test_with_output(func, #func, __LINE__)
 
 /**
  * @brief Print detailed test results including failure information
@@ -150,15 +150,15 @@ void app_main(void)
 
     // ===== Unity Verification Tests =====
     ESP_LOGI(TAG, "\n=== Running Unity Verification Tests ===");
-    RUN_TEST(test_deliberate_success);
-    RUN_TEST(test_deliberate_failure);
+    RUN_TEST_CUSTOM(test_deliberate_success);
+    RUN_TEST_CUSTOM(test_deliberate_failure);
     
     // ===== System Tests =====
     ESP_LOGI(TAG, "\n=== Running System Tests ===");
-    RUN_TEST(test_basic_system_functionality);
-    RUN_TEST(test_nvs_basic_functionality);
-    RUN_TEST(test_gpio_basic_functionality);
-    RUN_TEST(test_memory_allocation);
+    RUN_TEST_CUSTOM(test_basic_system_functionality);
+    RUN_TEST_CUSTOM(test_nvs_basic_functionality);
+    RUN_TEST_CUSTOM(test_gpio_basic_functionality);
+    RUN_TEST_CUSTOM(test_memory_allocation);
     
     // Print detailed results
     print_detailed_test_summary();

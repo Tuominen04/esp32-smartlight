@@ -1,14 +1,32 @@
-sdkconfig
+# ESP-IDF Build Artifacts
+build/
 sdkconfig.old
 dependencies.lock
-/build
-/.vscode
-/.devcontainer
 
-# tests
-/test/**/build
-/test_system/build
+# ESP-IDF Managed Components (regenerated)
+managed_components/
 
-# own generated files
+# Test Build Directories
+tests/**/build/
+test/**/build/
+
+# Generated Files
 gen_*.txt
-/*.ps1
+gen_*.ps1
+
+# IDE/Editor Specific (optional - uncomment if you want to ignore)
+/.vscode/
+/.devcontainer/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+# Temporary Files
+*.tmp
+*.swp
+*~
+
+# ESP-IDF Cache and Logs
+.cache/
+*.log

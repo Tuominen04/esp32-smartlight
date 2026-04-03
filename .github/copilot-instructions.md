@@ -1,36 +1,31 @@
 # ESP32 Smart Light Project Guidelines
 
-## Code Style
+## Overview
 
-- **Language**: C with ESP-IDF framework (v5.0+)
-- **Naming**: Snake_case for functions/variables, UPPER_SNAKE_CASE for macros/constants
-- **Headers**: Include guards with `#ifndef`, `#define`, `#endif` pattern
-- **Memory**: Use ESP_LOGI, ESP_LOGW, ESP_LOGE for logging; check return codes for all IDF calls
-- **Error Handling**: Return esp_err_t or custom error types; propagate errors up
+- **Language**: C with ESP-IDF framework (v5.0+), targeting ESP32-C6
+- **Build**: `idf.py set-target esp32c6 && idf.py build`
+- **Flash**: `idf.py -p <PORT> flash monitor`
+- **Tests**: `pytest` for unit tests in `tests/`
 
 ## Architecture
 
-Components in `components/` are self-contained modules:
-- Each component has its own `CMakeLists.txt` and public header
-- BLE, WiFi, HTTP, OTA, and GPIO handle device communication and control
-- Storage (NVS) and System Info provide persistent state and metadata
-- Main entry point orchestrates component initialization
+Components in `components/` are self-contained modules (own `CMakeLists.txt` + public header).
+Main entry point in `main/main.c` orchestrates initialization.
+See [README.md](../README.md) for the system architecture diagram.
 
-Refer to [README.md](../README.md) for system architecture diagram.
+## Key Conventions
 
-## Build and Test
-
-Build: `idf.py set-target esp32c6 && idf.py build`
-Flash: `idf.py -p <PORT> flash monitor`
-Run tests: `idf.py build` then use `pytest` for unit tests in `test/`
-
-ESP_LOGI tags: `BLUETOOTH`, `WIFI_MANAGER`, `HTTP_SERVER`, `OTA`
-
-## Conventions
-
-- Component headers declare public APIs; implementation is private
-- Configuration via `sdkconfig.defaults` (board-specific) or menuconfig
-- NVS key naming: `wifi_ssid`, `wifi_pass`, `device_id` (snake_case)
+- Configuration via `sdkconfig.defaults` or menuconfig
+- NVS keys: `wifi_ssid`, `wifi_pass`, `device_id` (snake_case)
 - HTTP endpoints documented in component READMEs
-- OTA URLs must HTTPS; timeout is 60 seconds
+- OTA URLs must use HTTPS; timeout is 60 seconds
+- ESP_LOGI tags: `BLUETOOTH`, `WIFI_MANAGER`, `HTTP_SERVER`, `OTA`
+
+## Detailed Rules
+
+Code style, error handling, and security rules are in scoped instruction files:
+- [C/H best practices](./instructions/c-h-best-practices.instructions.md) — naming, include guards, function size
+- [ESP-IDF best practices](./instructions/esp-idf-best-practices.instructions.md) — error codes, event patterns, NVS
+- [Security](./instructions/security.instructions.md) — secrets, PII, logging safety
+- [Documentation](./instructions/documentation.instructions.md) — READMEs, component docs
 

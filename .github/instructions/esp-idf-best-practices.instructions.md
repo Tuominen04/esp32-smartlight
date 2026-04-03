@@ -1,3 +1,8 @@
+---
+description: "Use when calling ESP-IDF APIs—error handling, event-driven patterns, NVS, resource cleanup, and logging safety."
+applyTo: "components/**/*.c, main/**/*.c"
+---
+
 # ESP-IDF Best Practices for ESP32 Smart Light
 
 Apply these rules when working with ESP-IDF APIs and platform behavior:

@@ -1,3 +1,8 @@
+---
+description: "Use when writing or editing C source and header files. Covers indentation, include guards, naming, function size, and argument validation."
+applyTo: "**/*.c, **/*.h"
+---
+
 # C Source/Headers Best Practices for ESP32 Smart Light
 
 Apply these rules when authoring or updating C and header files in this repository:

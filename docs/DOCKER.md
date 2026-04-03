@@ -9,27 +9,26 @@ Complete guide for building and flashing ESP32 firmware using Docker.
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop) and [VS Code Remote Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 2. Open project in VS Code → "Reopen in Container"
 3. Build: `idf.py build` in terminal
-4. Flash: `idf.py -p /dev/ttyUSB0 flash monitor` (use your port)
+4. Copy the binary from `/workspace/build` to host and flash using local `idf.py` or `esptool` outside container
 
-### Command Line
+### Command Line (Build Only)
 
 **Linux/macOS:**
 ```bash
-./docker_build.sh          # Build
-./docker_flash.sh /dev/ttyUSB0 460800  # Flash
+./docker_build.sh          # Build only
 ```
 
 **Windows (batch):**
 ```cmd
-docker_build.bat           # Build
-docker_flash.bat COM3      # Flash (default COM3)
+docker_build.bat           # Build only
 ```
 
 **Windows (PowerShell):**
 ```powershell
-.\docker_build.ps1                      # Build
-.\docker_flash.ps1 -Port COM3 -Baud 460800  # Flash
+.\docker_build.ps1         # Build only
 ```
+
+> Flash should be done from host OS (cmd/PowerShell/terminal) with `idf.py -p <port> flash` or `esptool.py` to avoid Docker serial passthrough limits.
 
 ## Find Your Device
 

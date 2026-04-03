@@ -22,31 +22,6 @@ services:
       - /dev/ttyACM0:/dev/ttyACM0
     command: /bin/bash
 
-  esp32-flash:
-    build:
-      context: .
-      dockerfile: .devcontainer/Dockerfile
-    image: esp32-smartlight:latest
-    container_name: esp32-smartlight-flash
-    volumes:
-      - .:/workspace
-      - esp32-idf-cache:/opt/esp/.espressif
-      - esp32-build-cache:/workspace/build
-    working_dir: /workspace
-    environment:
-      - IDF_PATH=/opt/esp/idf
-      - PATH=/opt/esp/idf/tools:/opt/esp/tools/xtensa-esp32c6-elf/esp-13.2.0_20230928/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - PORT=/dev/ttyUSB0
-      - BAUD=460800
-    privileged: true
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
-      - /dev/ttyUSB1:/dev/ttyUSB1
-      - /dev/ttyACM0:/dev/ttyACM0
-    depends_on:
-      - esp32-build
-    profiles:
-      - flash
 
 volumes:
   esp32-idf-cache:

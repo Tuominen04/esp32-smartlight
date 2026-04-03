@@ -11,13 +11,14 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef GPIO_CONTROL_H
-#define GPIO_CONTROL_H
+#ifndef COMPONENTS_GPIO_GPIO_CONTROL_H
+#define COMPONENTS_GPIO_GPIO_CONTROL_H
 
+#include "esp_err.h"
 #include "driver/gpio.h"
 #include <stdbool.h>
 
-//** GPIO pin definitions for LED. */ 
+/** GPIO pin definition for LED output. */
 #define LED_GPIO 23  // Adjust based on your board
 
 /**
@@ -78,4 +79,4 @@ bool gpio_get_light_state(void);
  */
 void gpio_toggle_light(void);
 
-#endif // GPIO_CONTROL_H
+#endif // COMPONENTS_GPIO_GPIO_CONTROL_H

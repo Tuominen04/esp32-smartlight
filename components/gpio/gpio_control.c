@@ -14,10 +14,25 @@
 #include "gpio_control.h"
 #include "esp_log.h"
 
-static const char *GPIO_TAG = "GPIO_CONTROL";
+static const char *gpio_tag = "GPIO_CONTROL";
 
-/** Current state of the LED light (true = ON, false = OFF). */
-static bool light_state = false;
+/**
+ * @brief Set LED GPIO output level and log failures.
+ *
+ * @param[in] level  Target GPIO level (0 = OFF, 1 = ON).
+ *
+ * @return
+ *      - ESP_OK on success
+ *      - ESP_ERR_* returned by gpio_set_level on failure
+ */
+static esp_err_t gpio_set_led_level(uint32_t level)
+{
+  esp_err_t res = gpio_set_level(LED_GPIO, (uint32_t)(level ? 1U : 0U));
+  if (res != ESP_OK) {
+    ESP_LOGE(gpio_tag, "Failed to set GPIO level for pin %d: %s", LED_GPIO, esp_err_to_name(res));
+  }
+  return res;
+}
 
 /**
  * @brief Initialize GPIO control for LED light management.
@@ -35,31 +50,30 @@ static bool light_state = false;
  */
 esp_err_t gpio_control_init(void)
 {
-    ESP_LOGI(GPIO_TAG, "Initializing GPIO control");
-    
-    // Initialize GPIO
-    esp_err_t res = gpio_reset_pin(LED_GPIO);
-    if (res != ESP_OK) {
-        ESP_LOGE(GPIO_TAG, "Failed to reset GPIO pin %d: %s", LED_GPIO, esp_err_to_name(res));
-        return res;
-    }
+  ESP_LOGI(gpio_tag, "Initializing GPIO control");
+  
+  // Initialize GPIO
+  esp_err_t res = gpio_reset_pin(LED_GPIO);
+  if (res != ESP_OK) {
+    ESP_LOGE(gpio_tag, "Failed to reset GPIO pin %d: %s", LED_GPIO, esp_err_to_name(res));
+    return res;
+  }
 
-    // Configure GPIO mode
-    res = gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
-    if (res != ESP_OK) {
-        ESP_LOGE(GPIO_TAG, "Failed to set GPIO direction for pin %d: %s", LED_GPIO, esp_err_to_name(res));
-        return res;
-    }
+  // Configure GPIO mode
+  res = gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
+  if (res != ESP_OK) {
+    ESP_LOGE(gpio_tag, "Failed to set GPIO direction for pin %d: %s", LED_GPIO, esp_err_to_name(res));
+    return res;
+  }
 
-    // Set the initial state of the light to OFF
-    res = gpio_set_level(LED_GPIO, light_state);
-    if (res != ESP_OK) {
-        ESP_LOGE(GPIO_TAG, "Failed to set GPIO level for pin %d: %s", LED_GPIO, esp_err_to_name(res));
-        return res;
-    }
-    
-    ESP_LOGI(GPIO_TAG, "GPIO control initialized, LED pin: %d", LED_GPIO);
-    return ESP_OK;
+  // Set the initial state of the light to OFF
+  res = gpio_set_led_level(0U);
+  if (res != ESP_OK) {
+    return res;
+  }
+  
+  ESP_LOGI(gpio_tag, "GPIO control initialized, LED pin: %d", LED_GPIO);
+  return ESP_OK;
 }
 
 /**
@@ -76,14 +90,12 @@ esp_err_t gpio_control_init(void)
  */
 void gpio_set_light_state(bool state)
 {
-    light_state = state;
-    esp_err_t res = gpio_set_level(LED_GPIO, light_state);
-    if (res != ESP_OK) {
-        ESP_LOGE(GPIO_TAG, "Failed to set GPIO level for pin %d: %s", LED_GPIO, esp_err_to_name(res));
-        return;
-    }
+  esp_err_t res = gpio_set_led_level((uint32_t)(state ? 1U : 0U));
+  if (res != ESP_OK) {
+    return;
+  }
 
-    ESP_LOGI(GPIO_TAG, "Light set to %s", light_state ? "ON" : "OFF");
+  ESP_LOGI(gpio_tag, "Light set to %s", state ? "ON" : "OFF");
 }
 
 /**
@@ -101,7 +113,7 @@ void gpio_set_light_state(bool state)
  */
 bool gpio_get_light_state(void)
 {
-    return light_state;
+  return gpio_get_level(LED_GPIO) != 0;
 }
 
 /**
@@ -117,11 +129,10 @@ bool gpio_get_light_state(void)
  */
 void gpio_toggle_light(void)
 {
-    light_state = !light_state;
-    esp_err_t res = gpio_set_level(LED_GPIO, light_state);
-    if (res != ESP_OK) {
-        ESP_LOGE(GPIO_TAG, "Failed to toggle GPIO level for pin %d: %s", LED_GPIO, esp_err_to_name(res));
-        return;
-    }
-    ESP_LOGI(GPIO_TAG, "Light toggled to %s", light_state ? "ON" : "OFF");
+  bool next_state = !gpio_get_light_state();
+  esp_err_t res = gpio_set_led_level((uint32_t)(next_state ? 1U : 0U));
+  if (res != ESP_OK) {
+    return;
+  }
+  ESP_LOGI(gpio_tag, "Light toggled to %s", next_state ? "ON" : "OFF");
 }

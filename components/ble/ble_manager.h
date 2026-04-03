@@ -11,8 +11,8 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef BLE_MANAGER_H
-#define BLE_MANAGER_H
+#ifndef COMPONENTS_BLE_BLE_MANAGER_H
+#define COMPONENTS_BLE_BLE_MANAGER_H
 
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
@@ -45,6 +45,6 @@ esp_err_t ble_manager_init(void);
  *
  * @param pvParameters Unused task parameter (pass NULL).
  */
-void ble_manager_handle_device_info_confirmation(void* pvParameters);
+void ble_manager_handle_device_info_confirmation(void *pv_parameters);
 
-#endif // BLE_MANAGER_H
+#endif // COMPONENTS_BLE_BLE_MANAGER_H

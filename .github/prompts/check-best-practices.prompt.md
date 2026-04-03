@@ -15,7 +15,7 @@ Use this prompt to instruct the agent to audit a specified file (or set of files
 
 ## Core behavior
 1. Identify the file(s) linked in the request.
-2. Evaluate code style (tabs vs spaces, function naming, include guards, etc.) according to `agent-customization.instructions.md`, `c-h-best-practices.instructions.md`, and `esp-idf-best-practices.instructions.md`.
+2. Evaluate code style (tabs vs spaces, function naming, include guards, etc.) according to `agent-customization.instructions.md`, `c-h-best-practices.instructions.md`, `esp-idf-best-practices.instructions.md`, and `security.instructions.md`.
 3. Evaluate correctness and best-practice coverage (error handling, secure logging, Null checks, resource cleanup, no hardcoded secrets).
 4. Recommend concrete additions/edits for readability, size reduction, performance, test coverage, and security hardening.
 5. Perform in-place edits when asked: update file, create helper file, or add docs/test files.

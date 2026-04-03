@@ -1,9 +1,11 @@
 ---
 description: "Audit files against project best practices (style, security, error handling) and suggest or apply fixes."
+name: "Best Practices Audit"
+argument-hint: "Path(s) to audit and whether to auto-apply fixes"
 agent: "agent"
 ---
 
-# Check Best Practices Prompt
+# Best Practices Prompt
 
 ## Purpose
 Use this prompt to instruct the agent to audit a specified file (or set of files) in this repository against project best practices and offer actionable improvements.

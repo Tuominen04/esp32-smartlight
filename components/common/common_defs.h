@@ -11,8 +11,8 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef COMMON_DEFS_H
-#define COMMON_DEFS_H
+#ifndef COMPONENTS_COMMON_COMMON_DEFS_H
+#define COMPONENTS_COMMON_COMMON_DEFS_H
 
 #include "esp_err.h"
 #include <stdbool.h>
@@ -101,7 +101,8 @@
 /** Maximum time to wait for HTTP responses in milliseconds. */
 #define HTTP_RESPONSE_TIMEOUT_MS 30000
 
-// Error codes (application specific)
+/* === Application error codes === */
+/* =============================== */
 /** Application error code for invalid WiFi credentials. */
 #define APP_ERR_INVALID_CREDENTIALS 0x1001
 
@@ -111,4 +112,4 @@
 /** Application error code for BLE not initialized state. */
 #define APP_ERR_BLE_NOT_INITIALIZED 0x1003
 
-#endif // COMMON_DEFS_H
+#endif // COMPONENTS_COMMON_COMMON_DEFS_H

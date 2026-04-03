@@ -31,3 +31,7 @@ This instruction file defines project-specific best practices for AI-assisted co
 - "Add a secure WiFi reconnect routine in `components/wifi`, with 2-space tabs, ESP logs, and inline API docs."
 - "Refactor `ota` module to handle timeout errors and include unit tests; ensure no credentials are leaked."
 - "Generate helper for component method doc comments and confirm security filters are applied."
+
+## Small-Ruleset Reference Files
+- `c-h-best-practices.instructions.md`
+- `esp-idf-best-practices.instructions.md`

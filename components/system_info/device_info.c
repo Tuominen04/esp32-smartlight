@@ -143,7 +143,7 @@ void device_manager_save_device_info(const char* ssid, const char* password) {
 
     // Save device ID (using MAC address last 4 bytes)
     uint8_t mac[6];
-    esp_err_t mac_err = esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+    esp_err_t mac_err = esp_wifi_get_mac(WIFI_IF_STA, mac);
     if (mac_err != ESP_OK) {
     ESP_LOGE(DEVICE_TAG, "Failed to get MAC address: %s", esp_err_to_name(mac_err));
         return;

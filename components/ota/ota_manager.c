@@ -74,6 +74,12 @@ static esp_err_t ota_manager_http_event_handler(esp_http_client_event_t *evt)
     case HTTP_EVENT_ON_DATA:
         ESP_LOGI(OTA_HTTP_TAG, "Received data chunk - %d bytes", evt->data_len);
         break;
+    case HTTP_EVENT_ON_HEADERS_COMPLETE:
+        ESP_LOGI(OTA_HTTP_TAG, "All headers received");
+        break;
+    case HTTP_EVENT_ON_STATUS_CODE:
+        ESP_LOGI(OTA_HTTP_TAG, "Received status code event");
+        break;
     case HTTP_EVENT_ON_FINISH:
         ESP_LOGI(OTA_HTTP_TAG, "Connection finished");
         break;

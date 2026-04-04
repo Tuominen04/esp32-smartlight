@@ -1,0 +1,7 @@
+## IDF Component Manager Manifest File for Unit Tests
+dependencies:
+  ## Required IDF version
+  idf:
+    version: ">=6.0.0"
+  # cJSON library for JSON parsing/generation (required by wifi and http components)
+  espressif/cjson: "^1.7.15"

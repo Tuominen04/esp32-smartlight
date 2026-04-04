@@ -24,6 +24,9 @@
 
 static const char *HTTP_TAG = "HTTP_SERVER";
 
+#define HTTP_SERVER_MIN_STACK_SIZE 2048
+#define HTTP_SERVER_MIN_CONNECTIONS 1
+
 /** HTTP server handle for managing the web server instance. */
 static httpd_handle_t s_server = NULL;
 
@@ -40,6 +43,66 @@ static size_t s_stack_size = 8192;
 static int s_max_connections = 3;
 
 /**
+ * @brief Set HTTP response content type and send response body.
+ *
+ * @param[in] req   HTTP request object.
+ * @param[in] type  Content type (for example: "application/json").
+ * @param[in] body  Response body string.
+ *
+ * @return
+ *      - ESP_OK on successful response send
+ *      - ESP_ERR_INVALID_ARG on invalid input
+ *      - ESP_ERR_* returned by HTTP server response APIs
+ */
+static esp_err_t http_send_response(httpd_req_t *req, const char *type, const char *body)
+{
+  if (req == NULL || type == NULL || body == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  esp_err_t result = httpd_resp_set_type(req, type);
+  if (result != ESP_OK) {
+    ESP_LOGE(HTTP_TAG, "Failed to set response content type: %s", esp_err_to_name(result));
+    return result;
+  }
+
+  result = httpd_resp_send(req, body, HTTPD_RESP_USE_STRLEN);
+  if (result != ESP_OK) {
+    ESP_LOGE(HTTP_TAG, "Failed to send HTTP response: %s", esp_err_to_name(result));
+    return result;
+  }
+
+  return ESP_OK;
+}
+
+/**
+ * @brief Validate runtime HTTP server configuration before start.
+ *
+ * @return
+ *      - ESP_OK when configuration is valid
+ *      - ESP_ERR_INVALID_STATE when configuration values are invalid
+ */
+static esp_err_t http_server_validate_runtime_config(void)
+{
+  if (s_server_port == 0) {
+    ESP_LOGE(HTTP_TAG, "Invalid HTTP server port: %u", s_server_port);
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  if (s_stack_size < HTTP_SERVER_MIN_STACK_SIZE) {
+    ESP_LOGE(HTTP_TAG, "Invalid HTTP stack size: %u", (unsigned int)s_stack_size);
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  if (s_max_connections < HTTP_SERVER_MIN_CONNECTIONS) {
+    ESP_LOGE(HTTP_TAG, "Invalid max connections: %d", s_max_connections);
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  return ESP_OK;
+}
+
+/**
  * @brief HTTP handler for device online status check.
  *
  * Handles GET requests to the `/online` endpoint. Responds with HTTP 200 OK and
@@ -52,9 +115,16 @@ static int s_max_connections = 3;
  */
 static esp_err_t online_get_handler(httpd_req_t *req)
 {
-    ESP_LOGI(HTTP_TAG, "Device online status requested");
-    httpd_resp_send(req, NULL, 0); // No body, just 200 OK
-    return ESP_OK;
+  if (req == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  ESP_LOGI(HTTP_TAG, "Device online status requested");
+  esp_err_t result = httpd_resp_send(req, NULL, 0);
+  if (result != ESP_OK) {
+    ESP_LOGE(HTTP_TAG, "Failed to send online response: %s", esp_err_to_name(result));
+  }
+  return result;
 }
 
 /**
@@ -74,15 +144,29 @@ static esp_err_t online_get_handler(httpd_req_t *req)
  */
 static esp_err_t status_get_handler(httpd_req_t *req)
 {
-    char json_resp[100];
-    sprintf(json_resp, "{\"device\":%d,\"state\":\"%s\"}", 
-            DEVICE_NUMBER, gpio_get_light_state() ? "on" : "off");
-    
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json_resp, strlen(json_resp));
-    
-    ESP_LOGI(HTTP_TAG, "Status request served");
-    return ESP_OK;
+  if (req == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  char json_resp[96];
+  int written = snprintf(
+      json_resp,
+      sizeof(json_resp),
+      "{\"device\":%d,\"state\":\"%s\"}",
+      DEVICE_NUMBER,
+      gpio_get_light_state() ? "on" : "off");
+  if (written < 0 || written >= (int)sizeof(json_resp)) {
+    ESP_LOGE(HTTP_TAG, "Failed to format status JSON response");
+    return ESP_FAIL;
+  }
+
+  esp_err_t result = http_send_response(req, "application/json", json_resp);
+  if (result != ESP_OK) {
+    return result;
+  }
+  
+  ESP_LOGI(HTTP_TAG, "Status request served");
+  return ESP_OK;
 }
 
 /**
@@ -102,43 +186,49 @@ static esp_err_t status_get_handler(httpd_req_t *req)
  */
 static esp_err_t light_toggle_handler(httpd_req_t *req)
 {
-    // Toggle the light state
-    gpio_toggle_light();
+  if (req == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
 
-    // Get the current state
-    bool current_state = gpio_get_light_state();
-    
-    ESP_LOGI(HTTP_TAG, "Light toggled to %s", current_state ? "ON" : "OFF");
-    
-    // Return a simple response
-    const char *resp = current_state ? "ON" : "OFF";
-    httpd_resp_set_type(req, "text/plain");
-    httpd_resp_send(req, resp, strlen(resp));
-    
-    return ESP_OK;
+  // Toggle the light state
+  gpio_toggle_light();
+
+  // Get the current state
+  bool current_state = gpio_get_light_state();
+  
+  ESP_LOGI(HTTP_TAG, "Light toggled to %s", current_state ? "ON" : "OFF");
+  
+  // Return a simple response
+  const char *resp = current_state ? "ON" : "OFF";
+  esp_err_t result = http_send_response(req, "text/plain", resp);
+  if (result != ESP_OK) {
+    return result;
+  }
+  
+  return ESP_OK;
 }
 
 static esp_err_t http_server_register_system_routes(void) 
 {
-    if (s_server == NULL) {
-        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
-        return ESP_ERR_INVALID_STATE;
-    }
+  if (s_server == NULL) {
+    ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
+    return ESP_ERR_INVALID_STATE;
+  }
 
-    // Device online endpoint
-    httpd_uri_t online_uri = {
-        .uri       = "/online",
-        .method    = HTTP_GET,
-        .handler   = online_get_handler,
-        .user_ctx  = NULL
-    };
-    esp_err_t result = httpd_register_uri_handler(s_server, &online_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register status handler");
-        return result;
-    }
+  // Device online endpoint
+  httpd_uri_t online_uri = {
+    .uri       = "/online",
+    .method    = HTTP_GET,
+    .handler   = online_get_handler,
+    .user_ctx  = NULL
+  };
+  esp_err_t result = httpd_register_uri_handler(s_server, &online_uri);
+  if (result != ESP_OK) {
+    ESP_LOGE(HTTP_TAG, "Failed to register online handler");
+    return result;
+  }
 
-    return ESP_OK;
+  return ESP_OK;
 }
 
 /**
@@ -157,39 +247,39 @@ static esp_err_t http_server_register_system_routes(void)
  */
 static esp_err_t http_server_register_light_routes(void)
 {
-    if (s_server == NULL) {
-        ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
-        return ESP_ERR_INVALID_STATE;
-    }
-    
-    // Status endpoint
-    httpd_uri_t status_uri = {
-        .uri       = "/light",
-        .method    = HTTP_GET,
-        .handler   = status_get_handler,
-        .user_ctx  = NULL
-    };
-    esp_err_t result = httpd_register_uri_handler(s_server, &status_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register status handler");
-        return result;
-    }
+  if (s_server == NULL) {
+    ESP_LOGE(HTTP_TAG, "Server not started, cannot register routes");
+    return ESP_ERR_INVALID_STATE;
+  }
+  
+  // Status endpoint
+  httpd_uri_t status_uri = {
+    .uri       = "/light",
+    .method    = HTTP_GET,
+    .handler   = status_get_handler,
+    .user_ctx  = NULL
+  };
+  esp_err_t result = httpd_register_uri_handler(s_server, &status_uri);
+  if (result != ESP_OK) {
+    ESP_LOGE(HTTP_TAG, "Failed to register status handler");
+    return result;
+  }
 
-    // Toggle endpoint
-    httpd_uri_t toggle_uri = {
-        .uri       = "/toggle",
-        .method    = HTTP_PUT,
-        .handler   = light_toggle_handler,
-        .user_ctx  = NULL
-    };
-    result = httpd_register_uri_handler(s_server, &toggle_uri);
-    if (result != ESP_OK) {
-        ESP_LOGE(HTTP_TAG, "Failed to register toggle handler");
-        return result;
-    }
-    
-    ESP_LOGI(HTTP_TAG, "Light control routes registered");
-    return ESP_OK;
+  // Toggle endpoint
+  httpd_uri_t toggle_uri = {
+    .uri       = "/toggle",
+    .method    = HTTP_PUT,
+    .handler   = light_toggle_handler,
+    .user_ctx  = NULL
+  };
+  result = httpd_register_uri_handler(s_server, &toggle_uri);
+  if (result != ESP_OK) {
+    ESP_LOGE(HTTP_TAG, "Failed to register toggle handler");
+    return result;
+  }
+  
+  ESP_LOGI(HTTP_TAG, "Light control routes registered");
+  return ESP_OK;
 }
 
 /**
@@ -336,40 +426,45 @@ esp_err_t http_server_init(void)
  */
 esp_err_t http_server_start(void)
 {
-    if (s_server != NULL) {
-        ESP_LOGW(HTTP_TAG, "HTTP server already running");
-        return ESP_OK;
+  if (s_server != NULL) {
+    ESP_LOGW(HTTP_TAG, "HTTP server already running");
+    return ESP_OK;
+  }
+  
+  esp_err_t config_check = http_server_validate_runtime_config();
+  if (config_check != ESP_OK) {
+    return config_check;
+  }
+
+  httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+  
+  // Apply custom configuration
+  config.server_port = s_server_port;
+  config.stack_size = s_stack_size;
+  config.max_open_sockets = s_max_connections;
+  config.lru_purge_enable = true;  // Enable LRU socket purging
+  
+  ESP_LOGI(HTTP_TAG, "Starting HTTP server on port %d", config.server_port);
+  
+  esp_err_t result = httpd_start(&s_server, &config);
+  if (result == ESP_OK) {
+    s_server_running = true;
+    
+    // Register all routes
+    esp_err_t route_result = http_server_register_all_routes();
+    if (route_result != ESP_OK) {
+      ESP_LOGE(HTTP_TAG, "Failed to register routes");
+      http_server_stop();
+      return route_result;
     }
     
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    
-    // Apply custom configuration
-    config.server_port = s_server_port;
-    config.stack_size = s_stack_size;
-    config.max_open_sockets = s_max_connections;
-    config.lru_purge_enable = true;  // Enable LRU socket purging
-    
-    ESP_LOGI(HTTP_TAG, "Starting HTTP server on port %d", config.server_port);
-    
-    esp_err_t result = httpd_start(&s_server, &config);
-    if (result == ESP_OK) {
-        s_server_running = true;
-        
-        // Register all routes
-        esp_err_t route_result = http_server_register_all_routes();
-        if (route_result != ESP_OK) {
-            ESP_LOGE(HTTP_TAG, "Failed to register routes");
-            http_server_stop();
-            return route_result;
-        }
-        
-        ESP_LOGI(HTTP_TAG, "HTTP server started successfully");
-        return ESP_OK;
-    } else {
-        ESP_LOGE(HTTP_TAG, "Failed to start HTTP server: %s", esp_err_to_name(result));
-        s_server = NULL;
-        return result;
-    }
+    ESP_LOGI(HTTP_TAG, "HTTP server started successfully");
+    return ESP_OK;
+  } else {
+    ESP_LOGE(HTTP_TAG, "Failed to start HTTP server: %s", esp_err_to_name(result));
+    s_server = NULL;
+    return result;
+  }
 }
 
 /**
@@ -434,12 +529,17 @@ bool http_server_is_running(void)
  */
 void http_server_set_port(uint16_t port)
 {
-    if (s_server != NULL) {
-        ESP_LOGW(HTTP_TAG, "Cannot change port while server is running");
-        return;
-    }
-    s_server_port = port;
-    ESP_LOGI(HTTP_TAG, "HTTP server port set to %d", port);
+  if (s_server != NULL) {
+    ESP_LOGW(HTTP_TAG, "Cannot change port while server is running");
+    return;
+  }
+  if (port == 0) {
+    ESP_LOGE(HTTP_TAG, "Invalid HTTP server port: %u", port);
+    return;
+  }
+
+  s_server_port = port;
+  ESP_LOGI(HTTP_TAG, "HTTP server port set to %d", port);
 }
 
 /**
@@ -456,12 +556,17 @@ void http_server_set_port(uint16_t port)
  */
 void http_server_set_stack_size(size_t stack_size)
 {
-    if (s_server != NULL) {
-        ESP_LOGW(HTTP_TAG, "Cannot change stack size while server is running");
-        return;
-    }
-    s_stack_size = stack_size;
-    ESP_LOGI(HTTP_TAG, "HTTP server stack size set to %d", stack_size);
+  if (s_server != NULL) {
+    ESP_LOGW(HTTP_TAG, "Cannot change stack size while server is running");
+    return;
+  }
+  if (stack_size < HTTP_SERVER_MIN_STACK_SIZE) {
+    ESP_LOGE(HTTP_TAG, "Stack size too small: %u", (unsigned int)stack_size);
+    return;
+  }
+
+  s_stack_size = stack_size;
+  ESP_LOGI(HTTP_TAG, "HTTP server stack size set to %u", (unsigned int)stack_size);
 }
 
 /**
@@ -478,10 +583,15 @@ void http_server_set_stack_size(size_t stack_size)
  */
 void http_server_set_max_connections(int max_connections)
 {
-    if (s_server != NULL) {
-        ESP_LOGW(HTTP_TAG, "Cannot change max connections while server is running");
-        return;
-    }
-    s_max_connections = max_connections;
-    ESP_LOGI(HTTP_TAG, "HTTP server max connections set to %d", max_connections);
+  if (s_server != NULL) {
+    ESP_LOGW(HTTP_TAG, "Cannot change max connections while server is running");
+    return;
+  }
+  if (max_connections < HTTP_SERVER_MIN_CONNECTIONS) {
+    ESP_LOGE(HTTP_TAG, "Invalid max connections: %d", max_connections);
+    return;
+  }
+
+  s_max_connections = max_connections;
+  ESP_LOGI(HTTP_TAG, "HTTP server max connections set to %d", max_connections);
 }

@@ -11,11 +11,14 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef HTTP_SERVER_H
-#define HTTP_SERVER_H
+#ifndef COMPONENTS_HTTP_HTTP_SERVER_H
+#define COMPONENTS_HTTP_HTTP_SERVER_H
 
-#include "esp_http_server.h"
 #include "esp_err.h"
+#include "esp_http_server.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 /**
  * @brief Initialize the HTTP server module.
@@ -121,4 +124,4 @@ void http_server_set_stack_size(size_t stack_size);
  */
 void http_server_set_max_connections(int max_connections);
 
-#endif // HTTP_SERVER_H
+#endif // COMPONENTS_HTTP_HTTP_SERVER_H

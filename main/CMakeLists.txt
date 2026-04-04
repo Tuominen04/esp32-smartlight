@@ -1,32 +1,12 @@
 idf_component_register(
-    SRCS
-        "main.c"
-        "../components/ble/ble_manager.c" 
-        "../components/gpio/gpio_control.c"
-        "../components/http/http_server.c"
-        "../components/ota/ota_manager.c"
-        "../components/storage/nvs_manager.c"
-        "../components/system_info/device_info.c"
-        "../components/wifi/wifi_manager.c"
-    INCLUDE_DIRS
-        "."
-        "../components"
-        "../components/ble"
-        "../components/common"
-        "../components/gpio"
-        "../components/http" 
-        "../components/ota"
-        "../components/storage"
-        "../components/system_info"
-        "../components/wifi"
-    REQUIRES 
-        esp_wifi 
-        nvs_flash
-        esp_http_server 
-        esp_driver_gpio
-        app_update
-        esp_http_client 
-        esp_https_ota
-        bt
-        cjson
+    SRCS "main.c"
+    INCLUDE_DIRS "."
+    REQUIRES
+        ble
+        gpio
+        http
+        ota
+        storage
+        system_info
+        wifi
 )

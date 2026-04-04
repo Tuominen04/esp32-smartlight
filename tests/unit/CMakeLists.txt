@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Include unit-test-app components to get Unity framework
-set(EXTRA_COMPONENT_DIRS 
+# Include Unity test framework from ESP-IDF
+set(EXTRA_COMPONENT_DIRS
     "$ENV{IDF_PATH}/tools/unit-test-app/components"
+    "../../components"
     "test_main"
 )
 

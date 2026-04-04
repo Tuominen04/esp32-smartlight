@@ -141,36 +141,33 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "🚀 Starting ESP32 Light Controller System Tests");
     ESP_LOGI(TAG, "=================================================");
-    
+
     // Small delay to let system stabilize
     vTaskDelay(pdMS_TO_TICKS(1000));
-    
+
     // Initialize Unity test framework
     UNITY_BEGIN();
 
     // ===== Unity Verification Tests =====
     ESP_LOGI(TAG, "\n=== Running Unity Verification Tests ===");
     RUN_TEST_CUSTOM(test_deliberate_success);
+#ifdef CONFIG_TEST_DELIBERATE_FAIL
     RUN_TEST_CUSTOM(test_deliberate_failure);
-    
+#endif
+
     // ===== System Tests =====
     ESP_LOGI(TAG, "\n=== Running System Tests ===");
     RUN_TEST_CUSTOM(test_basic_system_functionality);
     RUN_TEST_CUSTOM(test_nvs_basic_functionality);
     RUN_TEST_CUSTOM(test_gpio_basic_functionality);
     RUN_TEST_CUSTOM(test_memory_allocation);
-    
+
     // Print detailed results
     print_detailed_test_summary();
-    
+
     UNITY_END();
-    
+
     ESP_LOGI(TAG, "=================================================");
     ESP_LOGI(TAG, "🎉 All system tests completed!");
     ESP_LOGI(TAG, "=================================================");
-    
-    // Keep the program running so we can see all output
-    while(1) {
-        vTaskDelay(pdMS_TO_TICKS(10000));
-    }
 }

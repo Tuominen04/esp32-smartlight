@@ -11,13 +11,11 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef NVS_MANAGER_H
-#define NVS_MANAGER_H
+#ifndef COMPONENTS_STORAGE_NVS_MANAGER_H
+#define COMPONENTS_STORAGE_NVS_MANAGER_H
 
-#include "nvs_flash.h"
-#include "nvs.h"
-#include "esp_log.h"
-#include <string.h>
+#include "esp_err.h"
+#include <stddef.h>
 
 /**
  * @brief Initialize the NVS (Non-Volatile Storage) flash system.
@@ -47,7 +45,7 @@ esp_err_t nvs_manager_init(void);
  *      - ESP_ERR_NVS_NOT_FOUND if device info doesn't exist
  *      - ESP_ERR_* on NVS access or buffer size errors
  */
-esp_err_t nvs_manager_get_device_info(char* out_device_name, size_t name_buf_size, char* out_device_id, size_t id_buf_size);
+esp_err_t nvs_manager_get_device_info(char *out_device_name, size_t name_buf_size, char *out_device_id, size_t id_buf_size);
 
 /**
  * @brief Retrieve stored WiFi credentials from NVS.
@@ -65,7 +63,7 @@ esp_err_t nvs_manager_get_device_info(char* out_device_name, size_t name_buf_siz
  *      - ESP_ERR_NVS_NOT_FOUND if credentials don't exist
  *      - ESP_ERR_* on NVS access or buffer size errors
  */
-esp_err_t nvs_manager_get_wifi_credentials(char* out_ssid, size_t ssid_buf_size, char* out_password, size_t password_buf_size);
+esp_err_t nvs_manager_get_wifi_credentials(char *out_ssid, size_t ssid_buf_size, char *out_password, size_t password_buf_size);
 
 /**
  * @brief Delete all stored WiFi credentials and device information from NVS.
@@ -80,7 +78,7 @@ esp_err_t nvs_manager_get_wifi_credentials(char* out_ssid, size_t ssid_buf_size,
  * @note This function clears all device configuration data, requiring
  *       reconfiguration via BLE setup process.
  */
-esp_err_t nvs_manager_delete_wifi_credentials();
+esp_err_t nvs_manager_delete_wifi_credentials(void);
 
 /**
  * @brief Save WiFi credentials to NVS.
@@ -95,7 +93,7 @@ esp_err_t nvs_manager_delete_wifi_credentials();
  *      - ESP_OK on successful credential storage
  *      - ESP_ERR_* on NVS write or commit failure
  */
-esp_err_t nvs_manager_save_wifi_credentials(const char* ssid, const char* password);
+esp_err_t nvs_manager_save_wifi_credentials(const char *ssid, const char *password);
 
 /**
  * @brief Save device identification information to NVS.
@@ -110,6 +108,6 @@ esp_err_t nvs_manager_save_wifi_credentials(const char* ssid, const char* passwo
  *      - ESP_OK on successful device info storage
  *      - ESP_ERR_* on NVS write or commit failure
  */
-esp_err_t nvs_manager_save_device_info(const char* device_id, const char* device_name);
+esp_err_t nvs_manager_save_device_info(const char *device_id, const char *device_name);
 
-#endif // NVS_MANAGER_H
+#endif // COMPONENTS_STORAGE_NVS_MANAGER_H

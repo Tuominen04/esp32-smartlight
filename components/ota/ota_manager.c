@@ -19,6 +19,7 @@
 #include "esp_ota_ops.h"
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
+#include "esp_crt_bundle.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_app_format.h"
@@ -74,6 +75,19 @@ static void ota_set_status_message(const char *message)
 static bool ota_url_is_https(const char *url)
 {
   return (url != NULL) && (strncmp(url, "https://", 8) == 0);
+}
+
+/**
+ * @brief Check whether URL uses HTTP or HTTPS scheme.
+ *
+ * @param[in] url  Candidate URL.
+ *
+ * @return true if URL starts with "http://" or "https://", otherwise false.
+ */
+static bool ota_url_is_valid(const char *url)
+{
+  return (url != NULL) &&
+         ((strncmp(url, "http://", 7) == 0) || (strncmp(url, "https://", 8) == 0));
 }
 
 /**
@@ -171,10 +185,14 @@ static esp_err_t ota_manager_http_event_handler(esp_http_client_event_t *evt)
  */
 static bool ota_manager_perform_ota_update(const char* firmware_url)
 {        
-  if (!ota_url_is_https(firmware_url)) {
-    ESP_LOGE(OTA_TAG, "Rejected OTA URL because it is not HTTPS");
+  if (!ota_url_is_valid(firmware_url)) {
+    ESP_LOGE(OTA_TAG, "Rejected OTA URL: must start with http:// or https://");
     ota_set_status_message("Invalid firmware URL");
     return false;
+  }
+
+  if (!ota_url_is_https(firmware_url)) {
+    ESP_LOGW(OTA_TAG, "OTA URL is HTTP (not HTTPS) - only use on a trusted local network");
   }
 
   ESP_LOGI(OTA_TAG, "Starting OTA update process");
@@ -189,7 +207,8 @@ static bool ota_manager_perform_ota_update(const char* firmware_url)
     .buffer_size = OTA_BUF_SIZE,
     .timeout_ms = HTTP_RESPONSE_TIMEOUT_MS,
     .skip_cert_common_name_check = false,
-    .cert_pem = NULL
+    .cert_pem = NULL,
+    .crt_bundle_attach = ota_url_is_https(firmware_url) ? esp_crt_bundle_attach : NULL,
   };
   
   esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -607,10 +626,14 @@ esp_err_t ota_manager_ota_update_handler(httpd_req_t *req)
     return ESP_FAIL;
   }
 
-  if (!ota_url_is_https(firmware_url)) {
-    ESP_LOGE(OTA_HANDLER_TAG, "Rejected non-HTTPS firmware URL");
-    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware URL must use HTTPS");
+  if (!ota_url_is_valid(firmware_url)) {
+    ESP_LOGE(OTA_HANDLER_TAG, "Rejected invalid firmware URL: must start with http:// or https://");
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware URL must use http:// or https://");
     return ESP_FAIL;
+  }
+
+  if (!ota_url_is_https(firmware_url)) {
+    ESP_LOGW(OTA_HANDLER_TAG, "OTA URL is HTTP (not HTTPS) - only use on a trusted local network");
   }
 
   // Set OTA in progress flag before starting the task
@@ -753,11 +776,15 @@ esp_err_t ota_manager_start_update(const char* firmware_url)
     return ESP_ERR_INVALID_ARG;
   }
 
-  if (!ota_url_is_https(firmware_url)) {
-    ESP_LOGE(OTA_TAG, "Rejected non-HTTPS firmware URL");
+  if (!ota_url_is_valid(firmware_url)) {
+    ESP_LOGE(OTA_TAG, "Rejected invalid firmware URL: must start with http:// or https://");
     return ESP_ERR_INVALID_ARG;
   }
-  
+
+  if (!ota_url_is_https(firmware_url)) {
+    ESP_LOGW(OTA_TAG, "OTA URL is HTTP (not HTTPS) - only use on a trusted local network");
+  }
+
   if (ota_in_progress) {
     ESP_LOGW(OTA_TAG, "OTA already in progress");
     return ESP_ERR_INVALID_STATE;

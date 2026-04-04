@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "cJSON.h"
+#include "common_defs.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_event.h"
@@ -50,11 +51,14 @@ static size_t s_wifi_credentials_len = 0;
 /** Flag indicating new WiFi credentials are available for processing. */
 static bool s_new_wifi_credentials = false;
 
+/** Flag indicating if WiFi event handlers were registered. */
+static bool s_handlers_registered = false;
+
 /** WiFi station configuration structure for connection parameters. */
 static wifi_config_t s_wifi_config = {
-    .sta = {
-        .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-    },
+  .sta = {
+    .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+  },
 };
 
 /** Callback function pointer for WiFi connection events. */
@@ -65,6 +69,13 @@ static wifi_disconnected_cb_t s_disconnected_callback = NULL;
 
 // Forward declarations
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+
+static void wifi_manager_notify_device_info_if_available(void)
+{
+#ifdef CONFIG_BT_ENABLED
+  send_device_info_via_ble();
+#endif
+}
 
 /**
  * @brief Connect to WiFi network with provided credentials.
@@ -86,53 +97,64 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
  */
 static esp_err_t wifi_manager_connect(const char *ssid, const char *password)
 {
-    if (!s_wifi_initialized) {
-        ESP_LOGE(WIFI_TAG, "WiFi manager not initialized");
-        return ESP_FAIL;
-    }
+  if (!s_wifi_initialized) {
+    ESP_LOGE(WIFI_TAG, "WiFi manager not initialized");
+    return ESP_FAIL;
+  }
 
-    if (!ssid || !password) {
-        ESP_LOGE(WIFI_TAG, "Invalid SSID or password");
-        return ESP_FAIL;
-    }
+  if (!ssid || !password) {
+    ESP_LOGE(WIFI_TAG, "Invalid SSID or password");
+    return ESP_FAIL;
+  }
 
-    ESP_LOGI(WIFI_TAG, "Connecting to WiFi SSID: %s", ssid);
+  if (strlen(ssid) == 0 || strlen(password) == 0) {
+    ESP_LOGE(WIFI_TAG, "Empty SSID or password");
+    return ESP_ERR_INVALID_ARG;
+  }
 
-    // Reset retry counter
-    s_retry_num = 0;
-    s_wifi_connected = false;
+  ESP_LOGI(WIFI_TAG, "Connecting to WiFi network");
 
-    // Disconnect if already connected
-    esp_wifi_disconnect();
-    vTaskDelay(pdMS_TO_TICKS(100));
+  // Reset retry counter
+  s_retry_num = 0;
+  s_wifi_connected = false;
 
-    // Copy credentials to config
-    memset(&s_wifi_config.sta.ssid, 0, sizeof(s_wifi_config.sta.ssid));
-    memset(&s_wifi_config.sta.password, 0, sizeof(s_wifi_config.sta.password));
-    
-    strncpy((char *)s_wifi_config.sta.ssid, ssid, sizeof(s_wifi_config.sta.ssid) - 1);
-    strncpy((char *)s_wifi_config.sta.password, password, sizeof(s_wifi_config.sta.password) - 1);
+  // Disconnect if already connected; ignore benign not-connected states.
+  esp_err_t err = esp_wifi_disconnect();
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_CONNECT && err != ESP_ERR_WIFI_NOT_STARTED) {
+    ESP_LOGW(WIFI_TAG, "WiFi disconnect before reconnect returned: %s", esp_err_to_name(err));
+  }
 
-    // Set configuration and start
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &s_wifi_config));
-    
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    esp_err_t err = esp_wifi_start();
-    if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STOPPED) {
-        ESP_LOGE(WIFI_TAG, "Failed to start WiFi: %s", esp_err_to_name(err));
-        return err;
-    }
+  // Copy credentials to config
+  memset(&s_wifi_config.sta.ssid, 0, sizeof(s_wifi_config.sta.ssid));
+  memset(&s_wifi_config.sta.password, 0, sizeof(s_wifi_config.sta.password));
+  
+  snprintf((char *)s_wifi_config.sta.ssid, sizeof(s_wifi_config.sta.ssid), "%s", ssid);
+  snprintf((char *)s_wifi_config.sta.password, sizeof(s_wifi_config.sta.password), "%s", password);
 
-    // Connect
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    err = esp_wifi_connect();
-    if (err != ESP_OK) {
-        ESP_LOGE(WIFI_TAG, "Failed to connect to WiFi: %s", esp_err_to_name(err));
-        return err;
-    }
+  // Set configuration and start
+  err = esp_wifi_set_config(WIFI_IF_STA, &s_wifi_config);
+  if (err != ESP_OK) {
+    ESP_LOGE(WIFI_TAG, "Failed to set WiFi config: %s", esp_err_to_name(err));
+    return err;
+  }
 
-    ESP_LOGI(WIFI_TAG, "WiFi connection initiated, waiting for result...");
-    return ESP_OK;
+  xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
+
+  err = esp_wifi_start();
+  if (err != ESP_OK && err != ESP_ERR_WIFI_NOT_STOPPED) {
+    ESP_LOGE(WIFI_TAG, "Failed to start WiFi: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  // Connect
+  err = esp_wifi_connect();
+  if (err != ESP_OK) {
+    ESP_LOGE(WIFI_TAG, "Failed to connect to WiFi: %s", esp_err_to_name(err));
+    return err;
+  }
+
+  ESP_LOGI(WIFI_TAG, "WiFi connection initiated, waiting for result...");
+  return ESP_OK;
 }
 
 /**
@@ -148,73 +170,58 @@ static esp_err_t wifi_manager_connect(const char *ssid, const char *password)
  */
 static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-    if (event_base == WIFI_EVENT) {
-        switch (event_id) {
-            case WIFI_EVENT_STA_START:
-                ESP_LOGI(WIFI_TAG, "WiFi station started");
-                break;
+  (void)arg;
 
-            case WIFI_EVENT_STA_DISCONNECTED: {
-                wifi_event_sta_disconnected_t* disconnected = (wifi_event_sta_disconnected_t*) event_data;
-                ESP_LOGW(WIFI_TAG, "WiFi disconnected, reason: %d", disconnected->reason);
-                
-                s_wifi_connected = false;
-                
-                if (s_retry_num < MAXIMUM_RETRY) {
-                    esp_wifi_connect();
-                    s_retry_num++;
-                    ESP_LOGW(WIFI_TAG, "Retrying connection (%d/%d)", s_retry_num, MAXIMUM_RETRY);
-                } else {
-                    ESP_LOGE(WIFI_TAG, "WiFi connection failed after %d retries", MAXIMUM_RETRY);
-                    xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-                    
-                    if (s_disconnected_callback) {
-                        s_disconnected_callback();
-                    }
-                }
-                break;
-            }
-            case IP_EVENT_STA_GOT_IP: {
-                ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-                ESP_LOGI(WIFI_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-                
-                s_retry_num = 0;
-                s_wifi_connected = true;
-                xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-                
-                if (s_connected_callback) {
-                    s_connected_callback();
-                }
+  if (event_base == WIFI_EVENT) {
+    switch (event_id) {
+      case WIFI_EVENT_STA_START:
+        ESP_LOGI(WIFI_TAG, "WiFi station started");
+        break;
 
-                if (!s_new_wifi_credentials) {
-                    ESP_LOGI(WIFI_TAG, "Connected with saved credentials, sending device info via BLE after delay");
-                    // Add a delay to ensure mobile app is ready to receive notifications
-                    vTaskDelay(pdMS_TO_TICKS(3000)); // Wait 3 seconds
-                    send_device_info_via_ble();
-                }
-                break;
-            }
-
-            default:
-                break;
-        }
-    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-        ESP_LOGI(WIFI_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+      case WIFI_EVENT_STA_DISCONNECTED: {
+        wifi_event_sta_disconnected_t* disconnected = (wifi_event_sta_disconnected_t*) event_data;
+        ESP_LOGW(WIFI_TAG, "WiFi disconnected, reason: %d", disconnected->reason);
         
-        s_retry_num = 0;
-        s_wifi_connected = true;
-        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        s_wifi_connected = false;
         
-        if (s_connected_callback) {
-            s_connected_callback();
+        if (s_retry_num < WIFI_MAXIMUM_RETRY) {
+          esp_err_t reconnect_err = esp_wifi_connect();
+          if (reconnect_err != ESP_OK) {
+            ESP_LOGE(WIFI_TAG, "Retry connect failed: %s", esp_err_to_name(reconnect_err));
+          }
+          s_retry_num++;
+          ESP_LOGW(WIFI_TAG, "Retrying connection (%d/%d)", s_retry_num, WIFI_MAXIMUM_RETRY);
+        } else {
+          ESP_LOGE(WIFI_TAG, "WiFi connection failed after %d retries", WIFI_MAXIMUM_RETRY);
+          xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+          
+          if (s_disconnected_callback) {
+            s_disconnected_callback();
+          }
         }
+        break;
+      }
 
-        if (!s_new_wifi_credentials) {
-            ESP_LOGI(WIFI_TAG, "Connected with saved credentials, sending device info via BLE");
-            send_device_info_via_ble();
-        }
+      default:
+        break;
     }
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+    ESP_LOGI(WIFI_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+    
+    s_retry_num = 0;
+    s_wifi_connected = true;
+    xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    
+    if (s_connected_callback) {
+      s_connected_callback();
+    }
+
+    if (!s_new_wifi_credentials) {
+      ESP_LOGI(WIFI_TAG, "Connected with saved credentials, sending device info via BLE");
+      wifi_manager_notify_device_info_if_available();
+    }
+  }
 }
 
 /**
@@ -230,82 +237,86 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
  */
 esp_err_t wifi_manager_init(void)
 {
-    if (s_wifi_initialized) {
-        ESP_LOGW(WIFI_TAG, "WiFi manager already initialized");
-        return ESP_OK;
-    }
+  if (s_wifi_initialized) {
+    ESP_LOGW(WIFI_TAG, "WiFi manager already initialized");
+    return ESP_OK;
+  }
 
-    ESP_LOGI(WIFI_TAG, "Initializing WiFi manager");
+  ESP_LOGI(WIFI_TAG, "Initializing WiFi manager");
 
-    // Create event group
-    s_wifi_event_group = xEventGroupCreate();
-    if (s_wifi_event_group == NULL) {
-        ESP_LOGE(WIFI_TAG, "Failed to create event group");
-        return ESP_FAIL;
-    }
+  // Create event group
+  s_wifi_event_group = xEventGroupCreate();
+  if (s_wifi_event_group == NULL) {
+    ESP_LOGE(WIFI_TAG, "Failed to create event group");
+    return ESP_FAIL;
+  }
 
-    // Initialize network interface (only if not already done)
-    esp_err_t ret = esp_netif_init();
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_LOGE(WIFI_TAG, "Failed to initialize netif: %s", esp_err_to_name(ret));
-        return ret;
-    }
+  // Initialize network interface (only if not already done)
+  esp_err_t ret = esp_netif_init();
+  if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+    ESP_LOGE(WIFI_TAG, "Failed to initialize netif: %s", esp_err_to_name(ret));
+    return ret;
+  }
 
-    // Create default event loop (only if not already created)
-    ret = esp_event_loop_create_default();
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_LOGE(WIFI_TAG, "Failed to create event loop: %s", esp_err_to_name(ret));
-        return ret;
-    }
+  // Create default event loop (only if not already created)
+  ret = esp_event_loop_create_default();
+  if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+    ESP_LOGE(WIFI_TAG, "Failed to create event loop: %s", esp_err_to_name(ret));
+    return ret;
+  }
 
-    esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
-    if (sta_netif == NULL) {
-        esp_netif_create_default_wifi_sta();
-    }
+  esp_netif_t *sta_netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+  if (sta_netif == NULL) {
+    esp_netif_create_default_wifi_sta();
+  }
 
-    // Initialize WiFi
-    // Initialize WiFi
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ret = esp_wifi_init(&cfg);
-    if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
-        ESP_LOGE(WIFI_TAG, "Failed to initialize WiFi: %s", esp_err_to_name(ret));
-        return ret;
-    }
+  // Initialize WiFi
+  // Initialize WiFi
+  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  ret = esp_wifi_init(&cfg);
+  if (ret != ESP_OK && ret != ESP_ERR_INVALID_STATE) {
+    ESP_LOGE(WIFI_TAG, "Failed to initialize WiFi: %s", esp_err_to_name(ret));
+    return ret;
+  }
 
-    // Register event handlers
+  // Register event handlers
+  if (!s_handlers_registered) {
     esp_event_handler_instance_t instance_any_id;
     esp_event_handler_instance_t instance_got_ip;
-    
+
     ret = esp_event_handler_instance_register(WIFI_EVENT,
-                                           ESP_EVENT_ANY_ID,
-                                           &wifi_event_handler,
-                                           NULL,
-                                           &instance_any_id);
+                                            ESP_EVENT_ANY_ID,
+                                            &wifi_event_handler,
+                                            NULL,
+                                            &instance_any_id);
     if (ret != ESP_OK) {
-        ESP_LOGE(WIFI_TAG, "Failed to register WiFi event handler: %s", esp_err_to_name(ret));
-        return ret;
-    }
-    
-    ret = esp_event_handler_instance_register(IP_EVENT,
-                                           IP_EVENT_STA_GOT_IP,
-                                           &wifi_event_handler,
-                                           NULL,
-                                           &instance_got_ip);
-    if (ret != ESP_OK) {
-        ESP_LOGE(WIFI_TAG, "Failed to register IP event handler: %s", esp_err_to_name(ret));
-        return ret;
+      ESP_LOGE(WIFI_TAG, "Failed to register WiFi event handler: %s", esp_err_to_name(ret));
+      return ret;
     }
 
-    ret = esp_wifi_set_mode(WIFI_MODE_STA);
+    ret = esp_event_handler_instance_register(IP_EVENT,
+                                            IP_EVENT_STA_GOT_IP,
+                                            &wifi_event_handler,
+                                            NULL,
+                                            &instance_got_ip);
     if (ret != ESP_OK) {
-        ESP_LOGE(WIFI_TAG, "Failed to set WiFi mode: %s", esp_err_to_name(ret));
-        return ret;
+      ESP_LOGE(WIFI_TAG, "Failed to register IP event handler: %s", esp_err_to_name(ret));
+      return ret;
     }
-    
-    s_wifi_initialized = true;
-    ESP_LOGI(WIFI_TAG, "WiFi manager initialized successfully");
-    
-    return ESP_OK;
+
+    s_handlers_registered = true;
+  }
+
+  ret = esp_wifi_set_mode(WIFI_MODE_STA);
+  if (ret != ESP_OK) {
+    ESP_LOGE(WIFI_TAG, "Failed to set WiFi mode: %s", esp_err_to_name(ret));
+    return ret;
+  }
+  
+  s_wifi_initialized = true;
+  ESP_LOGI(WIFI_TAG, "WiFi manager initialized successfully");
+  
+  return ESP_OK;
 }
 
 /**
@@ -317,7 +328,7 @@ esp_err_t wifi_manager_init(void)
  */
 bool wifi_manager_is_connected(void)
 {
-    return s_wifi_connected;
+  return s_wifi_connected;
 }
 
 /**
@@ -332,18 +343,18 @@ bool wifi_manager_is_connected(void)
  */
 esp_err_t wifi_manager_disconnect(void)
 {
-    if (!s_wifi_initialized) {
-        return ESP_FAIL;
-    }
+  if (!s_wifi_initialized) {
+    return ESP_FAIL;
+  }
 
-    if (!s_wifi_connected) {
-        ESP_LOGW(WIFI_TAG, "WiFi is not connected, nothing to disconnect");
-        return ESP_OK; // Already disconnected
-    }
+  if (!s_wifi_connected) {
+    ESP_LOGW(WIFI_TAG, "WiFi is not connected, nothing to disconnect");
+    return ESP_OK; // Already disconnected
+  }
 
-    ESP_LOGI(WIFI_TAG, "Disconnecting from WiFi");
-    s_wifi_connected = false;
-    return esp_wifi_disconnect();
+  ESP_LOGI(WIFI_TAG, "Disconnecting from WiFi");
+  s_wifi_connected = false;
+  return esp_wifi_disconnect();
 }
 
 /**
@@ -362,15 +373,19 @@ esp_err_t wifi_manager_disconnect(void)
  *      - ESP_FAIL if no saved credentials exist or retrieval fails
  */
 esp_err_t wifi_manager_get_saved_credentials(char* out_ssid, size_t ssid_buf_size, char* out_password, size_t password_buf_size) {
-    esp_err_t err = nvs_manager_get_wifi_credentials(out_ssid, ssid_buf_size, out_password, password_buf_size);
+  if (out_ssid == NULL || out_password == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
 
-    if (err == ESP_OK) {
-        ESP_LOGI(WIFI_TAG, "Found WiFi saved credentials.");
-        return ESP_OK;
-    } else {
-        ESP_LOGI(WIFI_TAG, "No saved credentials: %s", esp_err_to_name(err));
-        return ESP_FAIL;
-    }
+  esp_err_t err = nvs_manager_get_wifi_credentials(out_ssid, ssid_buf_size, out_password, password_buf_size);
+
+  if (err == ESP_OK) {
+    ESP_LOGI(WIFI_TAG, "Found WiFi saved credentials.");
+    return err;
+  }
+
+  ESP_LOGI(WIFI_TAG, "No saved credentials: %s", esp_err_to_name(err));
+  return err;
 }
 
 /**
@@ -386,26 +401,26 @@ esp_err_t wifi_manager_get_saved_credentials(char* out_ssid, size_t ssid_buf_siz
  */
 void wifi_manager_set_new_credentials(const char *json_credentials)
 {
-    if (!json_credentials || json_credentials[0] == '\0') {
-        ESP_LOGE(WIFI_TAG, "NULL credentials provided");
-        s_new_wifi_credentials = false;
-        return;
-    }
+  if (!json_credentials || json_credentials[0] == '\0') {
+    ESP_LOGE(WIFI_TAG, "NULL credentials provided");
+    s_new_wifi_credentials = false;
+    return;
+  }
 
-    size_t len = strlen(json_credentials);
-    if (len >= sizeof(s_wifi_credentials_buffer)) {
-        ESP_LOGE(WIFI_TAG, "Credentials too long: %d bytes", len);
-        s_new_wifi_credentials = false;
-        return;
-    }
+  size_t len = strnlen(json_credentials, sizeof(s_wifi_credentials_buffer));
+  if (len >= sizeof(s_wifi_credentials_buffer)) {
+    ESP_LOGE(WIFI_TAG, "Credentials too long: %u bytes", (unsigned int)len);
+    s_new_wifi_credentials = false;
+    return;
+  }
 
-    // Copy credentials to buffer
-    memset(s_wifi_credentials_buffer, 0, sizeof(s_wifi_credentials_buffer));
-    strncpy(s_wifi_credentials_buffer, json_credentials, sizeof(s_wifi_credentials_buffer) - 1);
-    s_wifi_credentials_len = len;
-    s_new_wifi_credentials = true;
+  // Copy credentials to buffer
+  memset(s_wifi_credentials_buffer, 0, sizeof(s_wifi_credentials_buffer));
+  snprintf(s_wifi_credentials_buffer, sizeof(s_wifi_credentials_buffer), "%s", json_credentials);
+  s_wifi_credentials_len = len;
+  s_new_wifi_credentials = true;
 
-    ESP_LOGI(WIFI_TAG, "New WiFi credentials received");
+  ESP_LOGI(WIFI_TAG, "New WiFi credentials received");
 }
 
 /**
@@ -417,7 +432,7 @@ void wifi_manager_set_new_credentials(const char *json_credentials)
  */
 bool wifi_manager_has_new_credentials(void)
 {
-    return s_new_wifi_credentials;
+  return s_new_wifi_credentials;
 }
 
 /**
@@ -434,64 +449,66 @@ bool wifi_manager_has_new_credentials(void)
  */
 void wifi_manager_handle_new_credentials_task(void *pvParameters)
 {
-    ESP_LOGI(WIFI_TAG, "WiFi credentials handler task started");
+  (void)pvParameters;
 
-    while (1) {
-        if (s_new_wifi_credentials && s_wifi_credentials_len > 0) {
-            ESP_LOGI(WIFI_TAG, "Processing new WiFi credentials");
+  ESP_LOGI(WIFI_TAG, "WiFi credentials handler task started");
 
-            // Parse JSON
-            cJSON *root = cJSON_Parse(s_wifi_credentials_buffer);
-            if (root) {
-                cJSON *ssid_item = cJSON_GetObjectItem(root, "ssid");
-                cJSON *pass_item = cJSON_GetObjectItem(root, "password");
+  while (1) {
+    if (s_new_wifi_credentials && s_wifi_credentials_len > 0) {
+      ESP_LOGI(WIFI_TAG, "Processing new WiFi credentials");
 
-                if (ssid_item && pass_item && 
-                    ssid_item->valuestring && pass_item->valuestring) {
-                    
-                    const char *ssid = ssid_item->valuestring;
-                    const char *password = pass_item->valuestring;
+      // Parse JSON
+      cJSON *root = cJSON_Parse(s_wifi_credentials_buffer);
+      if (root) {
+        cJSON *ssid_item = cJSON_GetObjectItem(root, "ssid");
+        cJSON *pass_item = cJSON_GetObjectItem(root, "password");
 
-                    ESP_LOGI(WIFI_TAG, "Connecting to new SSID: %s", ssid);
+        if (cJSON_IsString(ssid_item) && cJSON_IsString(pass_item) &&
+          ssid_item->valuestring != NULL && pass_item->valuestring != NULL) {
+          
+          const char *ssid = ssid_item->valuestring;
+          const char *password = pass_item->valuestring;
 
-                    // Attempt connection
-                    esp_err_t result = wifi_manager_connect(ssid, password);
-                    if (result == ESP_OK) {
-                        // Wait for connection result
-                        EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-                                WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                pdFALSE, pdFALSE,
-                                pdMS_TO_TICKS(15000)); // 15 second timeout
+          ESP_LOGI(WIFI_TAG, "Connecting to new WiFi credentials");
 
-                        if (bits & WIFI_CONNECTED_BIT) {
-                            ESP_LOGI(WIFI_TAG, "Successfully connected to new WiFi");
-                            
-                            device_manager_save_device_info(ssid, password);
-                            
-                            ESP_LOGI(WIFI_TAG, "Sending device info via BLE after saving credentials");
-                            send_device_info_via_ble();
-                            
-                        } else {
-                            ESP_LOGE(WIFI_TAG, "Failed to connect to new WiFi");
-                        }
-                    }
-                } else {
-                    ESP_LOGW(WIFI_TAG, "Invalid JSON credentials format");
-                }
+          // Attempt connection
+          esp_err_t result = wifi_manager_connect(ssid, password);
+          if (result == ESP_OK) {
+            // Wait for connection result
+            EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+                    WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                    pdTRUE, pdFALSE,
+                    pdMS_TO_TICKS(WIFI_CONNECTION_TIMEOUT_MS));
 
-                cJSON_Delete(root);
+            if (bits & WIFI_CONNECTED_BIT) {
+              ESP_LOGI(WIFI_TAG, "Successfully connected to new WiFi");
+              
+              device_manager_save_device_info(ssid, password);
+              
+              ESP_LOGI(WIFI_TAG, "Sending device info via BLE after saving credentials");
+              wifi_manager_notify_device_info_if_available();
+                
             } else {
-                ESP_LOGW(WIFI_TAG, "Failed to parse credentials JSON");
+              ESP_LOGE(WIFI_TAG, "Failed to connect to new WiFi");
             }
-
-            // Reset credentials flag
-            s_new_wifi_credentials = false;
-            memset(s_wifi_credentials_buffer, 0, sizeof(s_wifi_credentials_buffer));
-            s_wifi_credentials_len = 0;
+          }
+        } else {
+          ESP_LOGW(WIFI_TAG, "Invalid JSON credentials format");
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        cJSON_Delete(root);
+      } else {
+        ESP_LOGW(WIFI_TAG, "Failed to parse credentials JSON");
+      }
+
+      // Reset credentials flag
+      s_new_wifi_credentials = false;
+      memset(s_wifi_credentials_buffer, 0, sizeof(s_wifi_credentials_buffer));
+      s_wifi_credentials_len = 0;
     }
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }
 
 /**

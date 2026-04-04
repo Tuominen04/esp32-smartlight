@@ -11,14 +11,12 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef WIFI_MANAGER_H
-#define WIFI_MANAGER_H
+#ifndef COMPONENTS_WIFI_WIFI_MANAGER_H
+#define COMPONENTS_WIFI_WIFI_MANAGER_H
 
-#include <stdint.h>
 #include <stdbool.h>
-#include "esp_event.h"
-#include "esp_wifi.h"
-#include "freertos/FreeRTOS.h"
+#include <stddef.h>
+#include "esp_err.h"
 #include "freertos/event_groups.h"
 
 /* The event group allows multiple bits for each event, but we only care about two events:
@@ -26,7 +24,7 @@
  * - we failed to connect after the maximum amount of retries */
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
-#define MAXIMUM_RETRY 5
+#define WIFI_MAXIMUM_RETRY 5
 
 // Callback function types
 typedef void (*wifi_connected_cb_t)(void);
@@ -81,7 +79,7 @@ esp_err_t wifi_manager_disconnect(void);
  *      - ESP_OK on successful credential retrieval
  *      - ESP_FAIL if no saved credentials exist or retrieval fails
  */
-esp_err_t wifi_manager_get_saved_credentials(char* out_ssid, size_t ssid_buf_size, char* out_password, size_t password_buf_size);
+esp_err_t wifi_manager_get_saved_credentials(char *out_ssid, size_t ssid_buf_size, char *out_password, size_t password_buf_size);
 
 /**
  * @brief Legacy WiFi connection function.
@@ -154,4 +152,4 @@ void wifi_manager_set_callbacks(wifi_connected_cb_t on_connect, wifi_disconnecte
  */
 EventGroupHandle_t wifi_manager_get_event_group(void);
 
-#endif // WIFI_MANAGER_H
+#endif // COMPONENTS_WIFI_WIFI_MANAGER_H

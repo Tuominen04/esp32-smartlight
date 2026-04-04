@@ -11,16 +11,17 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef OTA_MANAGER_H
-#define OTA_MANAGER_H
+#ifndef COMPONENTS_OTA_OTA_MANAGER_H
+#define COMPONENTS_OTA_OTA_MANAGER_H
 
 #include <stdbool.h>
+#include "esp_err.h"
 #include "esp_ota_ops.h"
 #include "esp_http_server.h"
 #include "esp_http_client.h"
+#include "common_defs.h"
 
 #define OTA_BUF_SIZE 8192
-#define MAX_HTTP_OUTPUT_BUFFER 2048
 
 /**
  * @brief Initialize the OTA manager module.
@@ -38,7 +39,7 @@ esp_err_t ota_manager_init(void);
  * Alternative to HTTP handler for starting OTA updates from application code.
  * Creates a background task to handle the update process.
  *
- * @param[in] firmware_url  URL of the firmware binary to download.
+ * @param[in] firmware_url  HTTPS URL of the firmware binary to download.
  *
  * @return
  *      - ESP_OK on successful task creation
@@ -102,6 +103,7 @@ esp_err_t ota_manager_firmware_info_handler(httpd_req_t *req);
  *
  * @note Returns immediately after starting the task; actual update runs
  *       in background. Only one OTA process can run at a time.
+ *       For security, firmware URL must use HTTPS.
  */
 esp_err_t ota_manager_ota_update_handler(httpd_req_t *req);
 
@@ -120,4 +122,4 @@ esp_err_t ota_manager_ota_update_handler(httpd_req_t *req);
  */
 esp_err_t ota_manager_progress_handler(httpd_req_t *req);
 
-#endif // OTA_MANAGER_H
+#endif // COMPONENTS_OTA_OTA_MANAGER_H

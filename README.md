@@ -142,6 +142,37 @@ esp32-smartlight-starter/
 
 For more information on structure and contents of ESP-IDF projects, please refer to Section [Build System](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html) of the ESP-IDF Programming Guide.
 
+## Testing
+
+The project includes comprehensive unit and system tests built with the Unity test framework.
+
+### Test Structure
+
+- **Unit Tests**: Located in `tests/unit/`, test individual components in isolation
+- **System Tests**: Located in `tests/system/`, test system integration and behavior
+
+### Quick Start
+
+```bash
+# Build and run unit tests
+cd tests/unit
+idf.py set-target esp32c6
+idf.py build
+idf.py -p /dev/ttyUSB0 flash monitor
+
+# Build and run system tests
+cd tests/system
+idf.py set-target esp32c6
+idf.py build
+idf.py -p /dev/ttyUSB0 flash monitor
+
+# Or use the test runner script
+cd tests
+./run_tests.sh all --target esp32c6
+```
+
+For detailed testing documentation, see [tests/README.md](tests/README.md).
+
 ## Troubleshooting
 ### Common Issues
 #### BLE Connection Problems

@@ -1,0 +1,4 @@
+## IDF Component Manager Manifest File
+dependencies:
+  # cJSON library for JSON parsing/generation (used for BLE advertisements)
+  espressif/cjson: "^1.7.15"

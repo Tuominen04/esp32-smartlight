@@ -10,6 +10,13 @@ description: "Use when generating or updating code in this ESP32 project. Covers
 2. Document new functions with purpose, parameters, return values, and error codes.
 3. Add or extend tests in `tests/unit` or `tests/system` for behavior changes.
 4. Update docs in `docs/` or component `README.md` when adding features or configuration.
+5. CI is hobby-focused: build and test checks only need to confirm the app is generally working.
+
+## CI Intent (Hobby Project)
+
+- Keep `.github/workflows/test.yml` focused on building unit and system test targets.
+- Keep `.github/workflows/build.yml` focused on building the main firmware.
+- Do not introduce release-gating or production-only compliance checks unless explicitly requested.
 
 ## Suggestions (strong preference)
 

@@ -1,14 +1,13 @@
 # Test component CMakeLists.txt - Comprehensive version
 idf_component_register(
-    SRCS 
+    SRCS
         "test_system.c"
         "test_main.c"
-    INCLUDE_DIRS 
+    INCLUDE_DIRS
         "."
-    REQUIRES 
+    REQUIRES
         unity
         nvs_flash
-        driver
         esp_driver_gpio
         esp_system
         log

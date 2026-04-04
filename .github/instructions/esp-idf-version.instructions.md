@@ -7,7 +7,7 @@ applyTo: "main/idf_component.yml, .github/workflows/*.yml, components/**/idf_com
 
 ## Required Version
 
-This project **requires ESP-IDF version 6.1.0 or later**.
+This project **requires ESP-IDF version 6.0.0 or later**.
 
 The application has been migrated to ESP-IDF 6.x and uses features available in this version.
 
@@ -17,18 +17,18 @@ The application has been migrated to ESP-IDF 6.x and uses features available in 
    ```yaml
    dependencies:
      idf:
-       version: ">=6.1.0"
+       version: ">=6.0.0"
    ```
 
 2. **CI/CD Workflows** (`.github/workflows/test.yml`):
    ```yaml
    container:
-     image: espressif/idf:v6.1
+     image: espressif/idf:v6.0
    ```
 
 ## Rules for Changes
 
-1. **DO NOT** downgrade the ESP-IDF version requirement below 6.1.0
+1. **DO NOT** downgrade the ESP-IDF version requirement below 6.0.0
 2. When updating CI workflows, ensure the Docker image version matches the requirement in `main/idf_component.yml`
 3. All three CI jobs (unit tests, system tests, production build) must use the same ESP-IDF version
 4. If upgrading to a newer ESP-IDF version:
@@ -39,13 +39,13 @@ The application has been migrated to ESP-IDF 6.x and uses features available in 
 
 ## Local Development
 
-Developers must have ESP-IDF v6.1.0 or later installed locally:
+Developers must have ESP-IDF v6.0.0 or later installed locally:
 
 ```bash
 # Verify your ESP-IDF version
 idf.py --version
 
-# Expected: ESP-IDF v6.1.0 or higher
+# Expected: ESP-IDF v6.0.0 or higher
 ```
 
 ## Migration Notes

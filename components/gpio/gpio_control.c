@@ -16,6 +16,10 @@
 
 static const char *gpio_tag = "GPIO_CONTROL";
 
+/** Software mirror of the GPIO output level. Avoids reading back the input register,
+ *  which is unreliable for output-only pins on ESP32-C6. */
+static bool s_light_state = false;
+
 /**
  * @brief Set LED GPIO output level and log failures.
  *
@@ -67,6 +71,7 @@ esp_err_t gpio_control_init(void)
   }
 
   // Set the initial state of the light to OFF
+  s_light_state = false;
   res = gpio_set_led_level(0U);
   if (res != ESP_OK) {
     return res;
@@ -94,7 +99,7 @@ void gpio_set_light_state(bool state)
   if (res != ESP_OK) {
     return;
   }
-
+  s_light_state = state;
   ESP_LOGI(gpio_tag, "Light set to %s", state ? "ON" : "OFF");
 }
 
@@ -113,7 +118,7 @@ void gpio_set_light_state(bool state)
  */
 bool gpio_get_light_state(void)
 {
-  return gpio_get_level(LED_GPIO) != 0;
+  return s_light_state;
 }
 
 /**
@@ -129,10 +134,11 @@ bool gpio_get_light_state(void)
  */
 void gpio_toggle_light(void)
 {
-  bool next_state = !gpio_get_light_state();
+  bool next_state = !s_light_state;
   esp_err_t res = gpio_set_led_level((uint32_t)(next_state ? 1U : 0U));
   if (res != ESP_OK) {
     return;
   }
+  s_light_state = next_state;
   ESP_LOGI(gpio_tag, "Light toggled to %s", next_state ? "ON" : "OFF");
 }

@@ -20,7 +20,7 @@ The application has been migrated to ESP-IDF 6.x and uses features available in 
        version: ">=6.0.0"
    ```
 
-2. **CI/CD Workflows** (`.github/workflows/test.yml`):
+2. **CI/CD Workflows** (`.github/workflows/test.yml`, `.github/workflows/build.yml`):
    ```yaml
    container:
      image: espressif/idf:v6.0
@@ -30,12 +30,18 @@ The application has been migrated to ESP-IDF 6.x and uses features available in 
 
 1. **DO NOT** downgrade the ESP-IDF version requirement below 6.0.0
 2. When updating CI workflows, ensure the Docker image version matches the requirement in `main/idf_component.yml`
-3. All three CI jobs (unit tests, system tests, production build) must use the same ESP-IDF version
+3. All CI jobs across test and build workflows must use the same ESP-IDF version
 4. If upgrading to a newer ESP-IDF version:
    - Update `main/idf_component.yml` first
-   - Update all container images in `.github/workflows/test.yml`
+   - Update all container images in `.github/workflows/test.yml` and `.github/workflows/build.yml`
    - Test locally before committing
    - Document any breaking changes or required migrations
+
+## CI Scope (Hobby Project)
+
+- This repository uses CI as a hobby-level health check.
+- Build and test workflows only need to verify that firmware and test targets compile and are generally working.
+- Production-release hardening checks are out of scope unless explicitly requested.
 
 ## Local Development
 

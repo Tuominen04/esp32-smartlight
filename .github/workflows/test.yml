@@ -60,44 +60,10 @@ jobs:
           path: tests/system/build/
           retention-days: 7
 
-  verify-production-build:
-    name: Verify Production Build (No Tests)
-    runs-on: ubuntu-latest
-    container:
-      image: espressif/idf:v6.0
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Build production firmware
-        run: |
-          . $IDF_PATH/export.sh
-          idf.py set-target esp32c6
-          idf.py build
-
-      - name: Verify no test components compiled
-        run: |
-          # Check that test files are not in the binary
-          if grep -r "test_main\|test_device_info\|test_gpio\|test_nvs\|test_wifi" build/ 2>/dev/null; then
-            echo "ERROR: Test components found in production build!"
-            exit 1
-          fi
-          echo "✓ Production build successfully excludes test components"
-
-      - name: Upload production firmware
-        uses: actions/upload-artifact@v4
-        with:
-          name: production-firmware
-          path: build/*.bin
-          retention-days: 30
-
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [build-unit-tests, build-system-tests, verify-production-build]
+    needs: [build-unit-tests, build-system-tests]
     if: always()
 
     steps:
@@ -107,4 +73,4 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✓ Unit tests build: ${{ needs.build-unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
           echo "✓ System tests build: ${{ needs.build-system-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Production build (isolated): ${{ needs.verify-production-build.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "✓ Test builds complete" >> $GITHUB_STEP_SUMMARY

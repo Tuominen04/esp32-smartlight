@@ -1,0 +1,51 @@
+name: Build Firmware
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-firmware:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.0
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build application firmware
+        run: |
+          . $IDF_PATH/export.sh
+          idf.py set-target esp32c6
+          idf.py build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-build
+          path: |
+            build/*.bin
+            build/*.elf
+            build/*.map
+          retention-days: 14
+
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build-firmware]
+    if: always()
+
+    steps:
+      - name: Summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✓ Firmware build: ${{ needs.build-firmware.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "✓ Hobby CI goal: verify app builds successfully" >> $GITHUB_STEP_SUMMARY

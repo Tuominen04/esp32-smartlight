@@ -219,7 +219,9 @@ void send_device_info_via_ble(void)
 
   esp_app_desc_t *app_desc = get_firmware_info();
   if (app_desc != NULL) {
-    snprintf(device_version, sizeof(device_version), "%s", app_desc->version);
+    size_t version_len = strnlen(app_desc->version, sizeof(device_version) - 1U);
+    memcpy(device_version, app_desc->version, version_len);
+    device_version[version_len] = '\0';
     free(app_desc);
   } else {
     snprintf(device_version, sizeof(device_version), "%s", "unknown");

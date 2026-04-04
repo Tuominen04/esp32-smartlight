@@ -579,13 +579,26 @@ esp_err_t ota_manager_ota_update_handler(httpd_req_t *req)
   if (root) {
     cJSON *url_item = cJSON_GetObjectItem(root, "url");
     if (url_item && url_item->valuestring) {
-      snprintf(firmware_url, sizeof(firmware_url), "%s", url_item->valuestring);
+      size_t url_len = strnlen(url_item->valuestring, sizeof(firmware_url));
+      if (url_len >= sizeof(firmware_url)) {
+        cJSON_Delete(root);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware URL too long");
+        return ESP_FAIL;
+      }
+      memcpy(firmware_url, url_item->valuestring, url_len);
+      firmware_url[url_len] = '\0';
     } else {
       ESP_LOGW(OTA_HANDLER_TAG, "No URL field found in JSON");
     }
     cJSON_Delete(root);
   } else {
-    snprintf(firmware_url, sizeof(firmware_url), "%s", request_body);
+    size_t url_len = strnlen(request_body, sizeof(firmware_url));
+    if (url_len >= sizeof(firmware_url)) {
+      httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Firmware URL too long");
+      return ESP_FAIL;
+    }
+    memcpy(firmware_url, request_body, url_len);
+    firmware_url[url_len] = '\0';
   }
 
   if (firmware_url[0] == '\0') {

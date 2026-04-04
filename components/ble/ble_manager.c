@@ -572,13 +572,14 @@ case ESP_GATTS_WRITE_EVT:
     gl_profile_tab[PROFILE_APP_IDX].conn_id = param->connect.conn_id;
     break;
       
-  case ESP_GATTS_DISCONNECT_EVT:
+  case ESP_GATTS_DISCONNECT_EVT: {
     ESP_LOGI(GATTS_TAG, "DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
-    esp_err_t ret = esp_ble_gap_start_advertising(&adv_params);
-    if (ret != ESP_OK) {
-        ESP_LOGE(GAP_TAG, "Failed to restart advertising on disconnect: %s", esp_err_to_name(ret));
+    esp_err_t adv_ret = esp_ble_gap_start_advertising(&adv_params);
+    if (adv_ret != ESP_OK) {
+        ESP_LOGE(GAP_TAG, "Failed to restart advertising on disconnect: %s", esp_err_to_name(adv_ret));
     }
     break;
+  }
       
   default:
     break;

@@ -17,6 +17,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "esp_err.h"
+#include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
 /* The event group allows multiple bits for each event, but we only care about two events:

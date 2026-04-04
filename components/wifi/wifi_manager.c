@@ -490,6 +490,10 @@ void wifi_manager_handle_new_credentials_task(void *pvParameters)
                 
             } else {
               ESP_LOGE(WIFI_TAG, "Failed to connect to new WiFi");
+              // Force-close the BLE connection so the device immediately
+              // restarts advertising and the mobile app can rediscover it
+              // for re-provisioning instead of waiting for a conn timeout.
+              device_info_disconnect_ble_client();
             }
           }
         } else {

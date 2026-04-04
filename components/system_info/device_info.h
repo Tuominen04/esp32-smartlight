@@ -83,6 +83,15 @@ void device_info_set_ble_handle(uint16_t handle);
  * @brief Callback type for setting the BLE characteristic handle externally.
  */
 typedef void (*set_device_info_handle_cb_t)(uint16_t handle);
+
+/**
+ * @brief Force-close the active BLE client connection.
+ *
+ * Closes the current GATT connection so the device immediately restarts
+ * advertising. Call this after a WiFi provisioning failure so the mobile
+ * app can rediscover and retry without waiting for a connection timeout.
+ */
+void device_info_disconnect_ble_client(void);
 #endif // CONFIG_BT_ENABLED
 
 #endif // COMPONENTS_SYSTEM_INFO_DEVICE_INFO_H

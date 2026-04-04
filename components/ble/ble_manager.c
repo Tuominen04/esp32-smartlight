@@ -265,6 +265,56 @@ static void ble_manager_gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_
  * - Sends appropriate responses for each write.
  * - Handles device connection and disconnection events.
  */
+
+/**
+ * @brief Process the accumulated wifi_buffer as a JSON message.
+ *
+ * Parses the buffer as either WiFi credentials or a confirmation message
+ * and updates the corresponding module state. Called from both
+ * ESP_GATTS_WRITE_EVT (regular write) and ESP_GATTS_EXEC_WRITE_EVT
+ * (long write execute) so that both write paths share one code path.
+ */
+static void ble_manager_process_wifi_buffer(void)
+{
+  if (wifi_buffer_len == 0) {
+    return;
+  }
+
+  wifi_buffer[wifi_buffer_len] = '\0';
+
+  if (wifi_buffer[0] != '{' || wifi_buffer[wifi_buffer_len - 1] != '}') {
+    ESP_LOGW(GATTS_TAG, "Buffer is not a complete JSON object, len=%d", (int)wifi_buffer_len);
+    return;
+  }
+
+  cJSON *root = cJSON_Parse(wifi_buffer);
+  if (!root) {
+    ESP_LOGW(GATTS_TAG, "Received invalid JSON data");
+    return;
+  }
+
+  cJSON *success_item = cJSON_GetObjectItem(root, "success");
+  if (success_item) {
+    ESP_LOGI(GATTS_TAG, "Received confirmation message: %s",
+             success_item->valueint ? "SUCCESS" : "FAILURE");
+    confirmation_successful = (success_item->valueint == 1);
+    waiting_confirmation = true;
+  } else {
+    cJSON *ssid_item = cJSON_GetObjectItem(root, "ssid");
+    cJSON *pass_item = cJSON_GetObjectItem(root, "password");
+    if (ssid_item && pass_item) {
+      ESP_LOGI(GATTS_TAG, "Received complete WiFi credentials");
+      wifi_manager_set_new_credentials(wifi_buffer);
+      confirmation_successful = true;
+      waiting_confirmation = true;
+    } else {
+      ESP_LOGW(GATTS_TAG, "Received unknown JSON message");
+    }
+  }
+
+  cJSON_Delete(root);
+}
+
 static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
   switch (event) {
@@ -329,7 +379,7 @@ static void ble_manager_gatts_profile_event_handler(esp_gatts_cb_event_t event, 
       };
       
       esp_attr_control_t control = {
-        .auto_rsp = ESP_GATT_AUTO_RSP
+        .auto_rsp = ESP_GATT_RSP_BY_APP
       };
       
       esp_err_t add_char_ret = esp_ble_gatts_add_char(
@@ -436,79 +486,73 @@ case ESP_GATTS_WRITE_EVT:
   
   // Check if this is a write to the WiFi credentials characteristic
   if (param->write.handle == gl_profile_tab[PROFILE_APP_IDX].char_handle) {
-    ESP_LOGI(GATTS_TAG, "Write to WiFi credentials characteristic");
-    
-    // Check if we have space in the buffer
-    if (wifi_buffer_len + param->write.len < sizeof(wifi_buffer) - 1) {
-      // Append the new data to our accumulation buffer
-      memcpy(wifi_buffer + wifi_buffer_len, param->write.value, param->write.len);
-      wifi_buffer_len += param->write.len;
-      wifi_buffer[wifi_buffer_len] = 0; // Null terminate
-      
-      ESP_LOGI(GATTS_TAG, "Accumulated data");
-      
-      // Check if we have a complete JSON object
-      if (wifi_buffer_len > 0 && wifi_buffer[0] == '{' && 
-        wifi_buffer[wifi_buffer_len-1] == '}') {
+    ESP_LOGI(GATTS_TAG, "Write to WiFi credentials characteristic (is_prep=%d)", param->write.is_prep);
 
-        // Parse the JSON to check what type of message it is
-        cJSON *root = cJSON_Parse(wifi_buffer);
-        if (root) {
-        // Check if this is a confirmation message
-        cJSON *success_item = cJSON_GetObjectItem(root, "success");
-          if (success_item) {
-            // This is a confirmation message
-            ESP_LOGI(GATTS_TAG, "Received confirmation message: %s", 
-                success_item->valueint ? "SUCCESS" : "FAILURE");
-            
-            confirmation_successful = (success_item->valueint == 1);
-            waiting_confirmation = true;
-        } else {
-            // Check if it's WiFi credentials
-            cJSON *ssid_item = cJSON_GetObjectItem(root, "ssid");
-            cJSON *pass_item = cJSON_GetObjectItem(root, "password");
-            
-            if (ssid_item && pass_item) {
-              ESP_LOGI(GATTS_TAG, "Received complete WiFi credentials");
-              
-              // Copy to credentials buffer
-              wifi_manager_set_new_credentials(wifi_buffer);
-              
-              // Set confirmation as successful immediately
-              confirmation_successful = true;
-              waiting_confirmation = true;
-            } else {
-              ESP_LOGW(GATTS_TAG, "Received unknown JSON message");
-            }
-          }
-          
-          cJSON_Delete(root);
-        } else {
-          ESP_LOGW(GATTS_TAG, "Received invalid JSON data");
+    if (param->write.is_prep) {
+      // Prepare Write: accumulate at the ATT offset provided by the client.
+      // The Execute Write event will fire when all chunks have been delivered.
+      size_t end = (size_t)param->write.offset + param->write.len;
+      if (end < sizeof(wifi_buffer)) {
+        memcpy(wifi_buffer + param->write.offset, param->write.value, param->write.len);
+        if (end > wifi_buffer_len) {
+          wifi_buffer_len = end;
         }
-        
-        // Reset accumulation buffer
-        memset(wifi_buffer, 0, sizeof(wifi_buffer));
-        wifi_buffer_len = 0;
+        ESP_LOGI(GATTS_TAG, "Accumulated prepare-write chunk, total=%d", (int)wifi_buffer_len);
+      } else {
+        ESP_LOGE(GATTS_TAG, "Prepare write overflow, offset=%d len=%d",
+                 param->write.offset, param->write.len);
       }
-      
-      // Always send a response
-      esp_err_t ret = esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
-      if (ret) {
-        ESP_LOGE(GATTS_TAG, "Send response failed, error code = %x", ret);
+      // Prepare Write Response must echo back handle, offset, and value.
+      if (param->write.need_rsp) {
+        esp_gatt_rsp_t rsp;
+        memset(&rsp, 0, sizeof(rsp));
+        rsp.attr_value.handle = param->write.handle;
+        rsp.attr_value.offset = param->write.offset;
+        rsp.attr_value.len    = param->write.len;
+        if (param->write.len <= sizeof(rsp.attr_value.value)) {
+          memcpy(rsp.attr_value.value, param->write.value, param->write.len);
+        }
+        esp_err_t ret = esp_ble_gatts_send_response(
+            gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, &rsp);
+        if (ret != ESP_OK) {
+          ESP_LOGE(GATTS_TAG, "Send prep-write response failed: %x", ret);
+        }
       }
     } else {
-      ESP_LOGE(GATTS_TAG, "Write buffer overflow, len=%d, buffer size=%d", 
-          wifi_buffer_len + param->write.len, sizeof(wifi_buffer) - 1);
-      
-      // Reset buffer on overflow
-      memset(wifi_buffer, 0, sizeof(wifi_buffer));
-      wifi_buffer_len = 0;
-      
-      // Still send a response but with an error
-      esp_err_t ret = esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_NO_RESOURCES, NULL);
-      if (ret != ESP_OK) {
-        ESP_LOGE(GATTS_TAG, "Send overflow response failed, error code = %x", ret);
+      // Regular Write: chunk-accumulate sequentially (no offset concept).
+      if (wifi_buffer_len + param->write.len < sizeof(wifi_buffer) - 1) {
+        memcpy(wifi_buffer + wifi_buffer_len, param->write.value, param->write.len);
+        wifi_buffer_len += param->write.len;
+        wifi_buffer[wifi_buffer_len] = 0;
+        ESP_LOGI(GATTS_TAG, "Accumulated data");
+
+        // Check if we have a complete JSON object
+        if (wifi_buffer_len > 0 && wifi_buffer[0] == '{' &&
+            wifi_buffer[wifi_buffer_len - 1] == '}') {
+          ble_manager_process_wifi_buffer();
+          memset(wifi_buffer, 0, sizeof(wifi_buffer));
+          wifi_buffer_len = 0;
+        }
+      } else {
+        ESP_LOGE(GATTS_TAG, "Write buffer overflow, len=%d, buffer size=%d",
+                 wifi_buffer_len + param->write.len, sizeof(wifi_buffer) - 1);
+        memset(wifi_buffer, 0, sizeof(wifi_buffer));
+        wifi_buffer_len = 0;
+        if (param->write.need_rsp) {
+          esp_err_t ret = esp_ble_gatts_send_response(
+              gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_NO_RESOURCES, NULL);
+          if (ret != ESP_OK) {
+            ESP_LOGE(GATTS_TAG, "Send overflow response failed: %x", ret);
+          }
+        }
+        break;
+      }
+      if (param->write.need_rsp) {
+        esp_err_t ret = esp_ble_gatts_send_response(
+            gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
+        if (ret) {
+          ESP_LOGE(GATTS_TAG, "Send response failed, error code = %x", ret);
+        }
       }
     }
   }
@@ -565,6 +609,27 @@ case ESP_GATTS_WRITE_EVT:
     }
   }
   break;
+
+  case ESP_GATTS_EXEC_WRITE_EVT: {
+    ESP_LOGI(GATTS_TAG, "EXEC_WRITE_EVT, flag=%d", param->exec_write.exec_write_flag);
+
+    // Send Execute Write Response first, before processing
+    esp_err_t exec_ret = esp_ble_gatts_send_response(
+        gatts_if, param->exec_write.conn_id, param->exec_write.trans_id, ESP_GATT_OK, NULL);
+    if (exec_ret != ESP_OK) {
+      ESP_LOGE(GATTS_TAG, "Send exec-write response failed: %x", exec_ret);
+    }
+
+    if (param->exec_write.exec_write_flag == ESP_GATT_PREP_WRITE_EXEC) {
+      ble_manager_process_wifi_buffer();
+    } else {
+      ESP_LOGI(GATTS_TAG, "Prepare write cancelled by client");
+    }
+
+    memset(wifi_buffer, 0, sizeof(wifi_buffer));
+    wifi_buffer_len = 0;
+    break;
+  }
 
   case ESP_GATTS_CONNECT_EVT:
     ESP_LOGI(GATTS_TAG, "CONNECT_EVT, conn_id = %d", param->connect.conn_id);
@@ -706,6 +771,11 @@ esp_err_t ble_manager_init(void)
     goto cleanup;
   }
   
+  // Initialize our profile before registering, so the callback is set
+  // before the BT task can fire ESP_GATTS_REG_EVT (which runs at higher priority).
+  gl_profile_tab[PROFILE_APP_IDX].gatts_cb = ble_manager_gatts_profile_event_handler;
+  gl_profile_tab[PROFILE_APP_IDX].gatts_if = ESP_GATT_IF_NONE;
+
   // Register the GATT profile
   ret = esp_ble_gatts_app_register(ESP_APP_ID);
   if (ret) {
@@ -713,46 +783,42 @@ esp_err_t ble_manager_init(void)
     goto cleanup;
   }
 
-  // Initialize our profile
-  gl_profile_tab[PROFILE_APP_IDX].gatts_cb = ble_manager_gatts_profile_event_handler;
-  gl_profile_tab[PROFILE_APP_IDX].gatts_if = ESP_GATT_IF_NONE;
-
   ESP_LOGI(BLE_TAG, "BLE manager initialized successfully");
 
   return ESP_OK;
 
 cleanup:
-    if (bluedroid_enabled) {
-        esp_err_t disable_ret = esp_bluedroid_disable();
-        if (disable_ret != ESP_OK) {
-            ESP_LOGE(BLE_TAG, "Failed to disable bluedroid: %s", esp_err_to_name(disable_ret));
-        }
-        bluedroid_enabled = false;
+  if (bluedroid_enabled) {
+    esp_err_t disable_ret = esp_bluedroid_disable();
+    if (disable_ret != ESP_OK) {
+      ESP_LOGE(BLE_TAG, "Failed to disable bluedroid: %s", esp_err_to_name(disable_ret));
     }
+    bluedroid_enabled = false;
+  }
 
-    if (bluedroid_initialized) {
-        esp_err_t deinit_ret = esp_bluedroid_deinit();
-        if (deinit_ret != ESP_OK) {
-            ESP_LOGE(BLE_TAG, "Failed to deinit bluedroid: %s", esp_err_to_name(deinit_ret));
-        }
-        bluedroid_initialized = false;
+  if (bluedroid_initialized) {
+    esp_err_t deinit_ret = esp_bluedroid_deinit();
+    if (deinit_ret != ESP_OK) {
+      ESP_LOGE(BLE_TAG, "Failed to deinit bluedroid: %s", esp_err_to_name(deinit_ret));
     }
+    bluedroid_initialized = false;
+  }
 
-    if (bt_controller_enabled) {
-        esp_err_t disable_ret = esp_bt_controller_disable();
-        if (disable_ret != ESP_OK) {
-            ESP_LOGE(BLE_TAG, "Failed to disable BT controller: %s", esp_err_to_name(disable_ret));
-        }
-        bt_controller_enabled = false;
+  if (bt_controller_enabled) {
+    esp_err_t disable_ret = esp_bt_controller_disable();
+    if (disable_ret != ESP_OK) {
+      ESP_LOGE(BLE_TAG, "Failed to disable BT controller: %s", esp_err_to_name(disable_ret));
     }
+    bt_controller_enabled = false;
+  }
 
-    if (bt_controller_initialized) {
-        esp_err_t deinit_ret = esp_bt_controller_deinit();
-        if (deinit_ret != ESP_OK) {
-            ESP_LOGE(BLE_TAG, "Failed to deinit BT controller: %s", esp_err_to_name(deinit_ret));
-        }
-        bt_controller_initialized = false;
+  if (bt_controller_initialized) {
+    esp_err_t deinit_ret = esp_bt_controller_deinit();
+    if (deinit_ret != ESP_OK) {
+      ESP_LOGE(BLE_TAG, "Failed to deinit BT controller: %s", esp_err_to_name(deinit_ret));
     }
+    bt_controller_initialized = false;
+  }
 
-    return ret;
+  return ret;
 }

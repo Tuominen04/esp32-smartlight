@@ -308,4 +308,26 @@ void device_info_set_ble_handle(uint16_t handle)
 {
   device_info_char_handle = handle;
 }
+
+/**
+ * @brief Force-close the active BLE client connection.
+ *
+ * Closes the current GATT connection so the device restarts advertising
+ * immediately, allowing the mobile app to rediscover it for re-provisioning.
+ *
+ * @note This is a no-op if no BLE connection is currently active.
+ */
+void device_info_disconnect_ble_client(void)
+{
+  if (ble_gatts_if == ESP_GATT_IF_NONE) {
+    ESP_LOGW(DEVICE_TAG, "No active BLE connection to close");
+    return;
+  }
+  esp_err_t ret = esp_ble_gatts_close(ble_gatts_if, ble_conn_id);
+  if (ret != ESP_OK) {
+    ESP_LOGE(DEVICE_TAG, "Failed to close BLE connection: %s", esp_err_to_name(ret));
+  } else {
+    ESP_LOGI(DEVICE_TAG, "BLE connection closed to restart advertising");
+  }
+}
 #endif

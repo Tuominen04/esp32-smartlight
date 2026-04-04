@@ -8,7 +8,7 @@ idf_component_register(
     REQUIRES
         unity
         nvs_flash
-        driver
+        esp_driver_gpio
         esp_system
         log
 )

@@ -11,11 +11,12 @@
  * distribution or use is strictly prohibited.
  */
 
-#ifndef DEVICE_INFO_H
-#define DEVICE_INFO_H
+#ifndef COMPONENTS_SYSTEM_INFO_DEVICE_INFO_H
+#define COMPONENTS_SYSTEM_INFO_DEVICE_INFO_H
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "common_defs.h"
 #include "esp_ota_ops.h"
 
 // Only include BLE headers if BLE is enabled
@@ -27,12 +28,6 @@
 #endif
 
 /**
- * @brief Unique device number or instance identifier.
- * Used internally for addressing or naming if needed.
- */
-#define DEVICE_NUMBER 1
-
-/**
  * @brief Save device information and WiFi credentials to NVS.
  *
  * This function creates a unique device name and ID using the MAC address.
@@ -41,7 +36,7 @@
  * @param ssid      WiFi SSID to save.
  * @param password  WiFi password to save.
  */
-void device_manager_save_device_info(const char* ssid, const char* password);
+void device_manager_save_device_info(const char *ssid, const char *password);
 
 /**
  * @brief Send device information to the mobile app via BLE.
@@ -62,7 +57,7 @@ void send_device_info_via_ble(void);
  * @return Pointer to an `esp_app_desc_t` structure, or NULL on failure.
  *         Caller is responsible for freeing the memory.
  */
-esp_app_desc_t* get_firmware_info(void);
+esp_app_desc_t *get_firmware_info(void);
 
 #ifdef CONFIG_BT_ENABLED
 /**
@@ -90,4 +85,4 @@ void device_info_set_ble_handle(uint16_t handle);
 typedef void (*set_device_info_handle_cb_t)(uint16_t handle);
 #endif // CONFIG_BT_ENABLED
 
-#endif // DEVICE_INFO_H
+#endif // COMPONENTS_SYSTEM_INFO_DEVICE_INFO_H

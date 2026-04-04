@@ -9,6 +9,9 @@ managed_components/
 # Test Build Directories
 tests/**/build/
 test/**/build/
+tests/test-results/
+tests/**/__pycache__/
+tests/**/*.pyc
 
 # Generated Files
 gen_*.txt

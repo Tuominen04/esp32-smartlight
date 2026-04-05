@@ -42,7 +42,7 @@ void test_wifi_saved_credentials(void)
   esp_err_t result = nvs_manager_save_wifi_credentials(TEST_SSID, TEST_PASSWORD);
   TEST_ASSERT_EQUAL(ESP_OK, result);
 
-  char retrieved_ssid[MAX_SSID_LEN]         = {0};
+  char retrieved_ssid[MAX_SSID_BUF_LEN]         = {0};
   char retrieved_password[MAX_PASSWORD_LEN] = {0};
 
   result = wifi_manager_get_saved_credentials(
@@ -69,7 +69,7 @@ void test_wifi_no_saved_credentials(void)
 
   nvs_manager_delete_wifi_credentials();
 
-  char retrieved_ssid[MAX_SSID_LEN]         = {0};
+  char retrieved_ssid[MAX_SSID_BUF_LEN]         = {0};
   char retrieved_password[MAX_PASSWORD_LEN] = {0};
 
   esp_err_t result = wifi_manager_get_saved_credentials(

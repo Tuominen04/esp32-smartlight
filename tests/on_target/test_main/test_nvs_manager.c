@@ -50,7 +50,7 @@ void test_nvs_wifi_credentials_save_load(void)
   TEST_ASSERT_EQUAL(ESP_OK, result);
   
   // Retrieve credentials
-  char retrieved_ssid[MAX_SSID_LEN] = {0};
+  char retrieved_ssid[MAX_SSID_BUF_LEN] = {0};
   char retrieved_password[MAX_PASSWORD_LEN] = {0};
   
   result = nvs_manager_get_wifi_credentials(
@@ -104,7 +104,7 @@ void test_nvs_wifi_credentials_delete(void)
   TEST_ASSERT_EQUAL(ESP_OK, result);
   
   // Try to retrieve - should fail
-  char retrieved_ssid[MAX_SSID_LEN] = {0};
+  char retrieved_ssid[MAX_SSID_BUF_LEN] = {0};
   char retrieved_password[MAX_PASSWORD_LEN] = {0};
   
   result = nvs_manager_get_wifi_credentials(

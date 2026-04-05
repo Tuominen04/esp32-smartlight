@@ -73,16 +73,16 @@ void test_single_char_ssid_accepted(void)
 }
 
 /**
- * @brief An SSID exactly at the usable limit (MAX_SSID_LEN - 1 chars) must
- *        still fit inside the MAX_SSID_LEN buffer with room for the null.
+ * @brief An SSID exactly at the usable limit (MAX_SSID_BUF_LEN - 1 chars) must
+ *        still fit inside the MAX_SSID_BUF_LEN buffer with room for the null.
  */
 void test_ssid_at_max_length_fits_buffer(void)
 {
-  char ssid[MAX_SSID_LEN];
-  memset(ssid, 'A', MAX_SSID_LEN - 1);
-  ssid[MAX_SSID_LEN - 1] = '\0';
+  char ssid[MAX_SSID_BUF_LEN];
+  memset(ssid, 'A', MAX_SSID_BUF_LEN - 1);
+  ssid[MAX_SSID_BUF_LEN - 1] = '\0';
 
-  TEST_ASSERT_TRUE(credential_fits_buffer(ssid, MAX_SSID_LEN));
+  TEST_ASSERT_TRUE(credential_fits_buffer(ssid, MAX_SSID_BUF_LEN));
 }
 
 /**
@@ -106,7 +106,7 @@ void test_password_at_max_length_fits_buffer(void)
 void test_max_credentials_fit_json_buffer(void)
 {
   /* Usable payload lengths (without null terminators). */
-  size_t max_ssid_payload     = (size_t)(MAX_SSID_LEN - 1);
+  size_t max_ssid_payload     = (size_t)(MAX_SSID_BUF_LEN - 1);
   size_t max_password_payload = (size_t)(MAX_PASSWORD_LEN - 1);
   size_t total                = max_ssid_payload + max_password_payload + CREDENTIAL_JSON_OVERHEAD;
 
@@ -155,16 +155,16 @@ void test_null_password_rejected(void)
 
 /**
  * @brief An SSID one character longer than the usable limit must not fit in
- *        the MAX_SSID_LEN buffer (overflow detection).
+ *        the MAX_SSID_BUF_LEN buffer (overflow detection).
  */
 void test_ssid_over_max_length_does_not_fit(void)
 {
-  /* MAX_SSID_LEN bytes of 'A' — no room for null terminator. */
-  char ssid[MAX_SSID_LEN + 1];
-  memset(ssid, 'A', MAX_SSID_LEN);
-  ssid[MAX_SSID_LEN] = '\0';
+  /* MAX_SSID_BUF_LEN bytes of 'A' — no room for null terminator. */
+  char ssid[MAX_SSID_BUF_LEN + 1];
+  memset(ssid, 'A', MAX_SSID_BUF_LEN);
+  ssid[MAX_SSID_BUF_LEN] = '\0';
 
-  TEST_ASSERT_FALSE(credential_fits_buffer(ssid, MAX_SSID_LEN));
+  TEST_ASSERT_FALSE(credential_fits_buffer(ssid, MAX_SSID_BUF_LEN));
 }
 
 /**

@@ -29,15 +29,15 @@
  * ========================================================================= */
 
 /**
- * @brief MAX_SSID_LEN must accommodate the full 32-byte WiFi SSID limit.
+ * @brief MAX_SSID_BUF_LEN must accommodate the full 32-byte WiFi SSID limit.
  *
- * IEEE 802.11 allows SSIDs up to 32 bytes. MAX_SSID_LEN must include space
+ * IEEE 802.11 allows SSIDs up to 32 bytes. MAX_SSID_BUF_LEN must include space
  * for the null terminator, so the minimum valid value is 33.
  */
 void test_ssid_len_satisfies_wifi_standard(void)
 {
   /* 32 bytes payload + 1 null terminator */
-  TEST_ASSERT_GREATER_OR_EQUAL(33, MAX_SSID_LEN);
+  TEST_ASSERT_GREATER_OR_EQUAL(33, MAX_SSID_BUF_LEN);
 }
 
 /**

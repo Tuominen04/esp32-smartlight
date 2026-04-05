@@ -26,8 +26,8 @@
 /** Default device name broadcasted via BLE and used in HTTP responses. */
 #define DEVICE_NAME "ESP-C6-Light"
 
-/** Maximum length for WiFi SSID strings including null terminator. */
-#define MAX_SSID_LEN 33
+/** Maximum length for WiFi SSID buffer including null terminator. */
+#define MAX_SSID_BUF_LEN 33
 
 /** Maximum length for WiFi password strings including null terminator. */
 #define MAX_PASSWORD_LEN 64

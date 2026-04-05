@@ -38,7 +38,7 @@ void test_device_manager_save_info(void)
 
   device_manager_save_device_info(TEST_SSID, TEST_PASSWORD);
 
-  char retrieved_ssid[MAX_SSID_LEN]         = {0};
+  char retrieved_ssid[MAX_SSID_BUF_LEN]         = {0};
   char retrieved_password[MAX_PASSWORD_LEN] = {0};
 
   esp_err_t result = nvs_manager_get_wifi_credentials(
@@ -167,7 +167,7 @@ void test_device_multiple_operations(void)
     snprintf(test_ssid, sizeof(test_ssid), "TestSSID_%d", i);
     device_manager_save_device_info(test_ssid, TEST_PASSWORD);
 
-    char retrieved_ssid[MAX_SSID_LEN]         = {0};
+    char retrieved_ssid[MAX_SSID_BUF_LEN]         = {0};
     char retrieved_password[MAX_PASSWORD_LEN] = {0};
 
     esp_err_t result = nvs_manager_get_wifi_credentials(

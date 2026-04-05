@@ -93,7 +93,7 @@ void app_main(void)
   wifi_manager_set_callbacks(on_wifi_connected, on_wifi_disconnected);
 
   // Try to load saved WiFi credentials
-  char saved_ssid[MAX_SSID_LEN] = {0};
+  char saved_ssid[MAX_SSID_BUF_LEN] = {0};
   char saved_password[MAX_PASSWORD_LEN] = {0};
   
   if (wifi_manager_get_saved_credentials(saved_ssid, sizeof(saved_ssid), saved_password, sizeof(saved_password)) == ESP_OK) {

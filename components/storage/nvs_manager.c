@@ -209,7 +209,7 @@ esp_err_t nvs_manager_get_wifi_credentials(char *out_ssid, size_t ssid_buf_size,
     return ESP_ERR_INVALID_ARG;
   }
 
-  if (ssid_buf_size < MAX_SSID_LEN || password_buf_size < MAX_PASSWORD_LEN) {
+  if (ssid_buf_size < MAX_SSID_BUF_LEN || password_buf_size < MAX_PASSWORD_LEN) {
     ESP_LOGE(NVS_TAG, "WiFi output buffers are too small");
     return ESP_ERR_INVALID_ARG;
   }
@@ -300,7 +300,7 @@ esp_err_t nvs_manager_delete_wifi_credentials(void)
  */
 esp_err_t nvs_manager_save_wifi_credentials(const char *ssid, const char *password)
 {
-  if (nvs_manager_validate_text(ssid, MAX_SSID_LEN - 1U, "ssid") != ESP_OK) {
+  if (nvs_manager_validate_text(ssid, MAX_SSID_BUF_LEN - 1U, "ssid") != ESP_OK) {
     return ESP_ERR_INVALID_ARG;
   }
   if (nvs_manager_validate_text(password, MAX_PASSWORD_LEN - 1U, "password") != ESP_OK) {

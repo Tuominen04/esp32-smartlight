@@ -34,7 +34,7 @@ jobs:
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [build-unit-tests, build-system-tests]
+    needs: [build-unit-tests]
     if: always()
 
     steps:
@@ -43,5 +43,4 @@ jobs:
           echo "## Test Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✓ Unit tests built and ran (linux target): ${{ needs.build-unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "✓ System tests build (esp32c6): ${{ needs.build-system-tests.result }}" >> $GITHUB_STEP_SUMMARY
           echo "✓ Test builds complete" >> $GITHUB_STEP_SUMMARY

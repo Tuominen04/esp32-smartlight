@@ -12,6 +12,9 @@
  */
 
 #include "ble_manager.h"
+
+#ifdef CONFIG_BT_ENABLED
+
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -822,3 +825,5 @@ cleanup:
 
   return ret;
 }
+
+#endif // CONFIG_BT_ENABLED

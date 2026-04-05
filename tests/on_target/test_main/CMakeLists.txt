@@ -14,5 +14,9 @@ idf_component_register(
     storage
     system_info
     wifi
+    espressif__cjson
+
+  PRIV_REQUIRES
+    esp_timer
 )
     

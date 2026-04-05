@@ -14,6 +14,7 @@
 #ifndef COMPONENTS_BLE_BLE_MANAGER_H
 #define COMPONENTS_BLE_BLE_MANAGER_H
 
+#ifdef CONFIG_BT_ENABLED
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
@@ -21,6 +22,7 @@
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "esp_gatt_common_api.h"
+#endif // CONFIG_BT_ENABLED
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -34,6 +36,7 @@
  *      - ESP_OK on success
  *      - Appropriate error code from esp_err_t on failure
  */
+#ifdef CONFIG_BT_ENABLED
 esp_err_t ble_manager_init(void);
 
 /**
@@ -46,5 +49,6 @@ esp_err_t ble_manager_init(void);
  * @param pvParameters Unused task parameter (pass NULL).
  */
 void ble_manager_handle_device_info_confirmation(void *pv_parameters);
+#endif // CONFIG_BT_ENABLED
 
 #endif // COMPONENTS_BLE_BLE_MANAGER_H

@@ -6,13 +6,6 @@
 A full-stack IoT light controller built with ESP-IDF (C, ESP32-C6). It combines BLE-based WiFi
 provisioning, an HTTP REST API, and OTA firmware updates in a modular component architecture.
 
-This repository serves two audiences:
-
-- **Recruiters and hiring managers** — looking for a sense of the code quality, architecture
-  decisions, and tooling used. Jump to [Project Highlights](#project-highlights).
-- **ESP32 developers** — looking for a clean, working starter for a connected light project.
-  Jump to [Quick Start](#quick-start).
-
 ## Project Highlights
 
 *For those reviewing this as a portfolio piece.*

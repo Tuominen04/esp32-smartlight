@@ -4,7 +4,7 @@ This directory contains the test infrastructure for the ESP32 Smart Light projec
 
 ## Test Structure
 
-```
+```txt
 tests/
 ├── unit/                   # Unit tests for individual components
 │   ├── CMakeLists.txt     # Independent ESP-IDF project configuration
@@ -161,7 +161,7 @@ idf.py menuconfig
 ## Command Matrix
 
 | Command | Description | Location |
-|---------|-------------|----------|
+| --- | --- | --- |
 | `cd tests/unit && idf.py build` | Build unit tests only | `tests/unit/` |
 | `cd tests/system && idf.py build` | Build system tests only | `tests/system/` |
 | `./run_tests.sh unit` | Build unit tests | `tests/` |
@@ -177,6 +177,7 @@ idf.py menuconfig
 Tests can be executed in GitHub Actions workflows using the provided test scripts. See `.github/workflows/test.yml` for the automated test execution pipeline.
 
 The CI workflow:
+
 1. Builds unit and system test firmware
 2. Collects build artifacts
 3. Optionally flashes and executes tests on hardware
@@ -197,11 +198,13 @@ Tests use proper ESP-IDF component linkage instead of direct source file inclusi
 ### Build Errors
 
 **Problem**: Component not found during test build
-```
+
+```txt
 CMake Error: Could not find component 'gpio'
 ```
 
 **Solution**: Ensure the test project's CMakeLists.txt includes the root components directory:
+
 ```cmake
 set(EXTRA_COMPONENT_DIRS
     "$ENV{IDF_PATH}/tools/unit-test-app/components"
@@ -213,11 +216,13 @@ set(EXTRA_COMPONENT_DIRS
 ### Flash Errors
 
 **Problem**: Tests fail to flash
-```
+
+```cmd
 Failed to connect to ESP32
 ```
 
 **Solution**:
+
 1. Check serial port connection
 2. Verify correct permissions: `sudo usermod -a -G dialout $USER` (Linux)
 3. Try resetting the device

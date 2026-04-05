@@ -9,6 +9,7 @@ This document summarizes the comprehensive refactoring of the ESP32 Smart Light 
 ### 1. Build Isolation ✅
 
 #### Component Architecture
+
 - **Created CMakeLists.txt for all components** in `components/*/CMakeLists.txt`:
   - `components/gpio/CMakeLists.txt`
   - `components/storage/CMakeLists.txt`
@@ -21,11 +22,13 @@ This document summarizes the comprehensive refactoring of the ESP32 Smart Light 
 Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQUIRES`.
 
 #### Production Build Isolation
+
 - **Removed test component injection** from root `CMakeLists.txt` (line 3)
 - **Updated `main/CMakeLists.txt`** to use component linkage instead of direct source inclusion
 - Production firmware (`idf.py build` in root) now excludes all test code
 
 #### Test Project Configuration
+
 - **Updated `tests/unit/CMakeLists.txt`** and **`tests/system/CMakeLists.txt`** as independent ESP-IDF projects
 - Test projects include root components via `EXTRA_COMPONENT_DIRS`
 - **Refactored `tests/unit/test_main/CMakeLists.txt`** to use component linkage via `REQUIRES` instead of direct source file inclusion
@@ -34,14 +37,17 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
 ### 2. Test Runner Cleanup ✅
 
 #### Automated Test Completion
+
 - **Removed infinite loop** from `tests/system/test_main/test_main.c:173`
 - Tests now return from `app_main()` after `UNITY_END()`, enabling automated runners to detect completion
 
 #### Deliberate Failure Tests
+
 - **Gated deliberate failure tests** behind `CONFIG_TEST_DELIBERATE_FAIL` Kconfig flag
 - Prevents CI failures from intentional test failures used for framework validation
 
 #### Standard Unity Patterns
+
 - **Replaced custom Unity orchestration wrappers** with standard Unity macros:
   - Uses `UNITY_BEGIN()` / `UNITY_END()` / `RUN_TEST()`
   - Removed custom `run_test_with_detailed_tracking()` and `RUN_CUSTOM_TEST()` wrappers
@@ -50,6 +56,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
 ### 3. Pytest Harness ✅
 
 #### Configuration Files
+
 - **Created `tests/pytest.ini`** with pytest-embedded configuration:
   - Test discovery patterns
   - Logging configuration
@@ -57,6 +64,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
   - JUnit XML output configuration
 
 #### Shared Fixtures
+
 - **Created `tests/conftest.py`** with shared pytest fixtures:
   - Project root path
   - Serial port configuration
@@ -65,6 +73,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
   - Custom command-line options
 
 #### Runner Scripts
+
 - **Created `tests/run_tests.sh`** bash script for build/flash/monitor orchestration:
   - Supports unit, system, or all test suites
   - Configurable port and target chip
@@ -73,6 +82,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
 ### 4. Documentation ✅
 
 #### Comprehensive Test Documentation
+
 - **Created `tests/README.md`** covering:
   - Test structure and organization
   - Build instructions for isolated test projects
@@ -84,6 +94,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
   - Best practices for writing tests
 
 #### Root README Updates
+
 - **Updated root `README.md`** with dedicated Testing section:
   - Quick start commands
   - Links to detailed test documentation
@@ -92,6 +103,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
 ### 5. CI Automation ✅
 
 #### GitHub Actions Workflow
+
 - **Created `.github/workflows/test.yml`** for automated testing:
   - **Job 1**: Build unit tests
   - **Job 2**: Build system tests
@@ -105,6 +117,7 @@ Each component now properly declares dependencies using `REQUIRES` and `PRIV_REQ
 ### 6. Additional Improvements ✅
 
 #### .gitignore Updates
+
 - Added patterns for test artifacts:
   - `tests/test-results/`
   - `tests/**/__pycache__/`
@@ -117,6 +130,7 @@ The following verification tasks require ESP-IDF to be available and are marked 
 ### ⏳ Pending Manual Verification
 
 1. **Unit tests build independently**
+
    ```bash
    cd tests/unit
    idf.py set-target esp32c6
@@ -124,6 +138,7 @@ The following verification tasks require ESP-IDF to be available and are marked 
    ```
 
 2. **System tests build independently**
+
    ```bash
    cd tests/system
    idf.py set-target esp32c6
@@ -131,6 +146,7 @@ The following verification tasks require ESP-IDF to be available and are marked 
    ```
 
 3. **Root firmware build excludes test components**
+
    ```bash
    idf.py set-target esp32c6
    idf.py build
@@ -142,18 +158,21 @@ These verifications will be performed by the GitHub Actions CI workflow automati
 ## Architecture Principles Established
 
 ### Component Isolation
+
 - Each component is self-contained with its own CMakeLists.txt
 - Dependencies explicitly declared via REQUIRES/PRIV_REQUIRES
 - Public headers in component directory root
 - Private implementation details hidden
 
 ### Test Isolation
+
 - Tests are independent ESP-IDF projects
 - Production build never compiles test code
 - Test projects explicitly include needed components
 - No pollution of production binary with test symbols
 
 ### Standard Patterns
+
 - Unity test framework standard macros only
 - No custom test orchestration wrappers
 - Tests complete naturally (no infinite loops)
@@ -164,12 +183,14 @@ These verifications will be performed by the GitHub Actions CI workflow automati
 ### For Developers
 
 When adding new tests:
+
 1. Use `RUN_TEST(test_function_name)` in test runners
 2. Ensure `app_main()` returns after `UNITY_END()`
 3. Declare test functions with `void test_name(void)` signature
 4. Add to appropriate test suite (unit or system)
 
 When adding new components:
+
 1. Create `components/component_name/CMakeLists.txt`
 2. Use `idf_component_register()` with proper REQUIRES
 3. Update dependent components' REQUIRES lists
@@ -178,6 +199,7 @@ When adding new components:
 ### For CI/CD
 
 The GitHub Actions workflow automatically:
+
 - Builds all test suites on push/PR
 - Verifies production build isolation
 - Archives build artifacts
@@ -186,6 +208,7 @@ The GitHub Actions workflow automatically:
 ## Files Modified/Created
 
 ### Modified Files
+
 - `CMakeLists.txt` (root)
 - `main/CMakeLists.txt`
 - `tests/unit/CMakeLists.txt`
@@ -197,6 +220,7 @@ The GitHub Actions workflow automatically:
 - `.gitignore`
 
 ### Created Files
+
 - `components/gpio/CMakeLists.txt`
 - `components/storage/CMakeLists.txt`
 - `components/system_info/CMakeLists.txt`

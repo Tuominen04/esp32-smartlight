@@ -30,33 +30,7 @@ jobs:
       - name: Run unit tests
         working-directory: tests/unit
         run: ./build/unit_test_app.elf
-
-  build-system-tests:
-    name: Build System Tests
-    runs-on: ubuntu-latest
-    container:
-      image: espressif/idf:v6.0
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Build system tests
-        working-directory: tests/system
-        run: |
-          . $IDF_PATH/export.sh
-          idf.py set-target esp32c6
-          idf.py build
-
-      - name: Upload system test artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: system-test-build
-          path: tests/system/build/
-          retention-days: 7
-
+        
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest

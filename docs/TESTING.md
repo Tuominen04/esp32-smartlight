@@ -1,84 +1,33 @@
-# Testing Guide
+# Testing
 
-Short overview of the test setup for the ESP32 Smart Light project.
+The ESP32 Smart Light project has three test suites, each targeting a different
+level of the stack.
 
-## Where Tests Live
+| Suite | Hardware needed | What it covers |
+| ---- | ---- | ---- |
+| Unit | No (linux target) | Constants, buffer limits, credential validation logic |
+| Integration | Yes (ESP32-C6) | Cross-component data flows between `device_info`, `wifi_manager`, and `nvs_manager` |
+| On-target | Yes (ESP32-C6) | Individual component behaviour on real hardware: GPIO, NVS, WiFi, device info |
 
-```
-tests/
-├── unit/       # Unit tests — one component at a time
-└── system/     # System tests — multiple components together
-```
+Unit tests run automatically in CI on every push. Integration and on-target tests
+require a physical board and are run manually.
 
-Both are independent ESP-IDF projects with their own `CMakeLists.txt` and
-`sdkconfig`. They are completely isolated from the production firmware build.
+For build commands, Docker usage, and how to add new tests see the
+[tests/README.md](../tests/README.md) and each suite's own README.
 
-## What Is Tested
+## CI Pipeline
 
-| Suite | What it covers |
-|-------|----------------|
-| Unit | `device_info`, `gpio_control`, `nvs_manager`, `wifi_manager` |
-| System | Boot sequence, component interaction, NVS read/write |
+Unit tests are built and executed in GitHub Actions (`test.yml`) using the linux
+target inside the `espressif/idf:v6.0` Docker image — no hardware needed. The job
+fails if any test assertion fails.
 
-Tests use the [Unity](https://github.com/ThrowTheSwitch/Unity) framework that
-ships with ESP-IDF.
-
-## How to Run
-
-### Prerequisites
-
-- ESP-IDF v6.0.0 or later installed and sourced
-- ESP32-C6 development board connected (for flash/monitor)
-
-### Build and flash unit tests
-
-```bash
-cd tests/unit
-idf.py set-target esp32c6
-idf.py build
-idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-### Build and flash system tests
-
-```bash
-cd tests/system
-idf.py set-target esp32c6
-idf.py build
-idf.py -p /dev/ttyUSB0 flash monitor
-```
-
-### Use the helper script
-
-```bash
-cd tests
-./run_tests.sh unit   --target esp32c6 --port /dev/ttyUSB0
-./run_tests.sh system --target esp32c6 --port /dev/ttyUSB0
-./run_tests.sh all    --target esp32c6          # build only, no flash
-```
-
-## Adding a New Test
-
-1. Create a `.c` file in `tests/unit/test_main/` (or `tests/system/test_main/`).
-2. Write test functions using Unity macros:
-
-```c
-#include "unity.h"
-#include "your_component.h"
-
-void test_your_feature(void) {
-    TEST_ASSERT_EQUAL(expected, actual);
-}
-```
-
-3. Register the function in `test_main.c`:
-
-```c
-RUN_TEST(test_your_feature);
-```
+See [docs/CICD.md](CICD.md) for the full pipeline overview.
 
 ## Further Reading
 
-- Full test infrastructure details: [`tests/README.md`](../tests/README.md)
-- CI/CD pipeline: [`docs/CICD.md`](CICD.md)
-- ESP-IDF unit testing guide: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/unit-tests.html>
+- [tests/README.md](../tests/README.md) — suite overview and quick start
+- [tests/unit/README.md](../tests/unit/README.md) — unit test details and CI usage
+- [tests/integration/README.md](../tests/integration/README.md) — integration test details
+- [tests/on_target/README.md](../tests/on_target/README.md) — on-target test details
+- [ESP-IDF unit testing guide](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/unit-tests.html)
+- [Unity test framework](https://github.com/ThrowTheSwitch/Unity)

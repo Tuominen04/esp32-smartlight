@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-unit-tests:
-    name: Build Unit Tests
+    name: Build and Run Unit Tests
     runs-on: ubuntu-latest
     container:
       image: espressif/idf:v6.0
@@ -20,19 +20,16 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build unit tests
+      - name: Build unit tests (linux target)
         working-directory: tests/unit
         run: |
           . $IDF_PATH/export.sh
-          idf.py set-target esp32c6
+          idf.py --preview set-target linux
           idf.py build
 
-      - name: Upload unit test artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-build
-          path: tests/unit/build/
-          retention-days: 7
+      - name: Run unit tests
+        working-directory: tests/unit
+        run: ./build/unit_test_app.elf
 
   build-system-tests:
     name: Build System Tests
@@ -71,6 +68,6 @@ jobs:
         run: |
           echo "## Test Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✓ Unit tests build: ${{ needs.build-unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "✓ System tests build: ${{ needs.build-system-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "✓ Unit tests built and ran (linux target): ${{ needs.build-unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "✓ System tests build (esp32c6): ${{ needs.build-system-tests.result }}" >> $GITHUB_STEP_SUMMARY
           echo "✓ Test builds complete" >> $GITHUB_STEP_SUMMARY
